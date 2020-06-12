@@ -1,0 +1,13 @@
+name = "HalfIntegerArrays"
+uuid = "8d01e2c4-1bfe-4abb-85d1-ae030bc38508"
+authors = ["Jishnu Bhattacharya"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
