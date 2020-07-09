@@ -197,10 +197,8 @@ function Base.hash(A::SpinMatrix, h::UInt)
     return h
 end
 
-Base.IndexStyle(::Type{HA}) where {HA<:AbstractHalfIntegerArray} = IndexStyle(parenttype(HA))
 parenttype(::Type{HalfIntArray{T,N,AA}}) where {T,N,AA} = AA
 parenttype(::Type{SpinMatrix{T,AA}}) where {T,AA} = AA
-parenttype(A::AbstractHalfIntegerArray) = parenttype(typeof(A))
 
 Base.parent(A::HIAorSM) = A.parent
 

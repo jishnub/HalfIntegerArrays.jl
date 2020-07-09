@@ -67,6 +67,9 @@ _maybetail(t::Tuple) = Base.tail(t)
 throw_lininderr() = throw(ArgumentError("linear indexing requires an integer index"))
 ensureInt(i) = isinteger(i) || throw_lininderr()
 
+Base.IndexStyle(::Type{HA}) where {HA<:AbstractHalfIntegerArray} = IndexStyle(parenttype(HA))
+parenttype(A::AbstractHalfIntegerArray) = parenttype(typeof(A))
+
 # Convert Real indices to HalfInt
 function Base.to_indices(A::AbstractHalfIntegerArrayWrapper, inds, I::Tuple{Real, Vararg{Any}})
 
@@ -215,6 +218,48 @@ for DT in [:AbstractHalfIntegerArray, :AbstractHalfIntegerArrayWrapper]
     	throw(DimensionMismatch("new dimensions $inds may have at most one omitted dimension specified by `Colon()`"))
 	@eval Base.reshape(A::$DT, inds::Tuple{}) = 
 	    throw(DimensionMismatch("new dimensions () must be consistent with array size $(length(A))"))
+end
+
+@static if isdefined(Base, :copyto_unaliased!)
+    function Base.copyto_unaliased!(deststyle::IndexStyle, dest::AbstractHalfIntegerArrayWrapper, srcstyle::IndexStyle, src::AbstractHalfIntegerArrayWrapper)
+        isempty(src) && return dest
+        destinds, srcinds = LinearIndicesHalfInt(dest), LinearIndicesHalfInt(src)
+        idf, isf = first(destinds), first(srcinds)
+        Δi = idf - isf
+        (checkbounds(Bool, destinds, isf+Δi) & checkbounds(Bool, destinds, last(srcinds)+Δi)) ||
+            throw(BoundsError(dest, srcinds))
+        if deststyle isa IndexLinear
+            if srcstyle isa IndexLinear
+                # Single-index implementation
+                @inbounds for i in srcinds
+                    dest[i + Δi] = src[i]
+                end
+            else
+                # Dual-index implementation
+                i = idf - 1
+                @inbounds for a in src
+                    dest[i+=1] = a
+                end
+            end
+        else
+            iterdest, itersrc = eachindex(dest), eachindex(src)
+            if iterdest == itersrc
+                # Shared-iterator implementation
+                for I in iterdest
+                    @inbounds dest[I] = src[I]
+                end
+            else
+                # Dual-iterator implementation
+                ret = iterate(iterdest)
+                @inbounds for a in src
+                    idx, state = ret
+                    dest[idx] = a
+                    ret = iterate(iterdest, state)
+                end
+            end
+        end
+        return dest
+    end
 end
 
 end
