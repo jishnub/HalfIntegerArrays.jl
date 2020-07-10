@@ -179,12 +179,12 @@ julia> h = HalfIntArray(reshape(1:4, 2, 2), -1//2:1//2, -1//2:1//2)
  2  4
 
 julia> c = CartesianIndicesHalfInt(h)
-2×2 CartesianIndicesHalfInt{2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}}:
+2×2 CartesianIndicesHalfInt{2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}} with indices -1/2:1/2×-1/2:1/2:
  CartesianIndexHalfInt(-1/2, -1/2)  CartesianIndexHalfInt(-1/2, 1/2)
  CartesianIndexHalfInt(1/2, -1/2)   CartesianIndexHalfInt(1/2, 1/2)
 
-julia> c[1,1]
-CartesianIndexHalfInt(-1/2, -1/2)
+julia> c[1/2,1/2]
+CartesianIndexHalfInt(1/2, 1/2)
 ```
 """
 struct CartesianIndicesHalfInt{N,R} <: AbstractHalfIntegerArray{CartesianIndexHalfInt{N},N}
@@ -387,7 +387,7 @@ end
 """
     LinearIndicesHalfInt(A::AbstractArray)
 
-Return a `LinearIndicesHalfInt` array with the same shape and [`axes`](@ref) as `A`,
+Return a `LinearIndicesHalfInt` array with the same shape and `axes` as `A`,
 holding the linear index of each entry in `A`. Indexing this array with
 cartesian indices allows mapping them to linear indices.
 
@@ -405,7 +405,7 @@ therefore the suitable for working with `AbstractHalfIntegerArray`s.
 
 # Examples
 ```jldoctest
-julia> h
+julia> h = HalfIntArray(reshape(1:4, 2, 2), -1//2:1//2, -1//2:1//2)
 2×2 HalfIntArray(reshape(::UnitRange{Int64}, 2, 2), -1/2:1/2, -1/2:1/2) with eltype Int64 with indices -1/2:1/2×-1/2:1/2:
  1  3
  2  4
@@ -437,7 +437,6 @@ julia> lindsv[0]
 0
 ```
 """
-# LinearIndices
 struct LinearIndicesHalfInt{N,R<:NTuple{N,AbstractUnitRange{Int}}} <: AbstractHalfIntegerArray{HalfInt,N}
     lininds :: LinearIndices{N,R}
     offsets :: NTuple{N,HalfInt}

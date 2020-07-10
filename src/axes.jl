@@ -1,8 +1,8 @@
 """
     HalfIntegerArrays.OneTo(n)
 
-Define an AbstractUnitRange that behaves like 1:n, with the added distinction that the lower limit is guaranteed (by the type
-system) to be 1. The elements are integers of a `HalfInteger` type.
+Define an AbstractUnitRange that behaves like `1:n`, with the added distinction that the lower limit is guaranteed (by the type
+system) to be `1`. The elements are integers, but of a `HalfInteger` type.
 """
 struct OneTo{T<:HalfInteger} <: AbstractUnitRange{T}
     stop :: T

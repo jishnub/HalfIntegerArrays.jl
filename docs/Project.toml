@@ -1,3 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 HalfIntegerArrays = "8d01e2c4-1bfe-4abb-85d1-ae030bc38508"
+
+[compat]
+Documenter = "0.24"

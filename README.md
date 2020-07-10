@@ -2,7 +2,6 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://jishnub.github.io/HalfIntegerArrays.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://jishnub.github.io/HalfIntegerArrays.jl/dev)
-[![Build Status](https://github.com/jishnub/HalfIntegerArrays.jl/workflows/CI/badge.svg)](https://github.com/jishnub/HalfIntegerArrays.jl/actions)
 [![Build Status](https://travis-ci.com/jishnub/HalfIntegerArrays.jl.svg?branch=master)](https://travis-ci.com/jishnub/HalfIntegerArrays.jl)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/jishnub/HalfIntegerArrays.jl?svg=true)](https://ci.appveyor.com/project/jishnub/HalfIntegerArrays-jl)
 [![Coverage](https://codecov.io/gh/jishnub/HalfIntegerArrays.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jishnub/HalfIntegerArrays.jl)
@@ -81,7 +80,7 @@ julia> s = SpinMatrix{ComplexF64}(undef, 1//2)
  6.91635e-310+6.91637e-310im  6.91637e-310+6.91637e-310im
 ```
 
-A `SpinMatrix` requires the parent array to have `1`-based indexing. It does not, however, impose any size restriction on the parent array. The only restriction is on the number of dimensions: the parent array needs to be a `Vector` or a `Matrix`.
+A `SpinMatrix` requires the parent matrix to have `1`-based indexing and have a size of `(2j+1, 2j+1)`.
 
 ## Indexing
 
@@ -136,7 +135,7 @@ julia> h[cinds[1,0]]
 2
 ```
 
-Indexing with `CartesianIndices` work as well for arrays with integer indices, where the axes ranges are specified while creating the range.
+Indexing with `CartesianIndices` works as well for arrays with integer indices.
 
 ## Broadcasting
 

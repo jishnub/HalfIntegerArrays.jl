@@ -19,13 +19,13 @@ julia> h = HalfIntArray(reshape(1:9, 3, 3), -1:1, -1:1)
  3  6  9
 
 julia> hv = @view h[-1:1, 0]
-3-element HalfIntSubArray(view(reshape(::UnitRange{Int64}, 3, 3), 1:3, 2), -1:1) with eltype Int64 with indices -1:1:
+3-element HalfIntSubArray(view(reshape(::UnitRange{Int64}, 3, 3), 1:3, 2), 1:3) with eltype Int64 with indices 1:3:
  4
  5
  6
 
-julia> hv[0]
-5
+julia> hv[1]
+4
 
 julia> h = HalfIntArray(reshape(collect(1:4), 2, 2), -1//2:1//2, -1//2:1//2)
 2×2 HalfIntArray(::Array{Int64,2}, -1/2:1/2, -1/2:1/2) with eltype Int64 with indices -1/2:1/2×-1/2:1/2:
@@ -34,8 +34,8 @@ julia> h = HalfIntArray(reshape(collect(1:4), 2, 2), -1//2:1//2, -1//2:1//2)
 
 julia> hv = @view h[:, 1//2]
 2-element HalfIntSubArray(view(::Array{Int64,2}, :, 2), -1/2:1/2) with eltype Int64 with indices -1/2:1/2:
-  3
- 10
+ 3
+ 4
 
 julia> hv[1//2] = 10
 10

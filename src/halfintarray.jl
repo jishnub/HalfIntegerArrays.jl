@@ -110,10 +110,10 @@ The initializer `init` may be one of `undef`, `missing` or `nothing`.
 
 # Examples
 ```jldoctest
-julia> HalfIntArray{Int}(undef, 0:1, 0:1)
-2×2 HalfIntArray(::Array{Int64,2}, 0:1, 0:1) with eltype Int64 with indices 0:1×0:1:
- 140351285081576  140351285165800
- 140351284092864                0
+julia> HalfIntArray{Union{Int,Missing}}(undef, 0:1, 0:1)
+2×2 HalfIntArray(::Array{Union{Missing, Int64},2}, 0:1, 0:1) with eltype Union{Missing, Int64} with indices 0:1×0:1:
+ missing  missing
+ missing  missing
 ```
 """
 HalfIntArray{T,N}(init::ArrayInitializer, inds::Indices{N}) where {T,N} =
@@ -155,10 +155,10 @@ set by the initializer `init` that may be one of `undef`, `missing` or `nothing`
 
 # Examples
 ```jldoctest
-julia> SpinMatrix{Float64}(undef, 1//2)
-2×2 SpinMatrix(::Array{Float64,2}, 1/2) with eltype Float64 with indices -1/2:1/2×-1/2:1/2:
- 0.0         0.0
- 2.122e-314  0.0
+julia> SpinMatrix{Union{Int,Missing}}(undef, 1//2)
+2×2 SpinMatrix(::Array{Union{Missing, Int64},2}, 1/2) with eltype Union{Missing, Int64} with indices -1/2:1/2×-1/2:1/2:
+ missing  missing
+ missing  missing
 ```
 """
 function SpinMatrix{T}(init::ArrayInitializer, j::Real) where {T}
