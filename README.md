@@ -126,7 +126,7 @@ julia> h = HalfIntArray(reshape(1:4,2,2), 0:1, 0:1)
  1  3
  2  4
 
-julia> eachindex(IndexCartesian(), h)
+julia> cinds = eachindex(IndexCartesian(), h)
 2×2 CartesianIndicesHalfInt{2,Tuple{Base.OneTo{Int64},Base.OneTo{Int64}}} with indices 0:1×0:1:
  CartesianIndexHalfInt(0, 0)  CartesianIndexHalfInt(0, 1)
  CartesianIndexHalfInt(1, 0)  CartesianIndexHalfInt(1, 1)
@@ -159,10 +159,10 @@ julia> @btime parent($h) .+ parent($h);
   94.443 ns (1 allocation: 160 bytes)
 ```
 
-A `SpinMatrix` will get converted to a `HalfIntArray` on broadcasting. This behaviour might change in the future.
+Upon broadcasting with `SpinMatrix` types, the result will be a `HalfIntArray`. This behaviour might change in the future.
 
 ```julia
-julia> s = SpinMatrix(reshape(1:4,2,2),half(1))
+julia> s = SpinMatrix(reshape(1:4,2,2), half(1))
 2×2 SpinMatrix(reshape(::UnitRange{Int64}, 2, 2), 1/2) with eltype Int64 with indices -1/2:1/2×-1/2:1/2:
  1  3
  2  4
