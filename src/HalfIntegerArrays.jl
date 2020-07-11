@@ -139,12 +139,13 @@ _all_match_first_shadow(f::F, inds) where F<:Function = true
 end
 
 function Base.collect(h::AbstractHalfIntegerArrayWrapper)
-    b = HalfIntArray{eltype(h)}(undef,axes(h))
-    @inbounds for i in eachindex(h, b)
-        b[i] = h[i]
+    b = Array{eltype(h)}(undef,size(h))
+    @inbounds for (bi,hi) in zip(eachindex(b), eachindex(h))
+        b[bi] = h[hi]
     end
     b
 end
+Base.Array{T,N}(h::AbstractHalfIntegerArray{T,N}) where {T,N} = collect(h)
 
 # Similar and reshape
 

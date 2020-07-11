@@ -35,8 +35,7 @@ function Base.show(io::IO, X::AdjOrTransAbsHalfIntVecOrMat)
 end
 
 function Base.show(io::IO, X::Union{LinearIndicesHalfInt,CartesianIndicesHalfInt})
-    Y = unwraphalfint(collect(X))
-    show(io, Y)    
+    show(io, collect(X))
 end
 
 Base.show(io::IO, i::CartesianIndexHalfInt) = (print(io, "CartesianIndexHalfInt"); show(io, Tuple(i)))

@@ -33,6 +33,8 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 			@test eltype(h) == T
 			@test HalfIntegerArrays.unwraphalfint(h) === arr
 			@test HalfIntegerArrays.unwraphalfint(h,parent(h)) === arr
+			@test collect(h) == collect(parent(h))
+			@test Array(h) == collect(h)
 
 			@test HalfIntArray(h,Tuple(0 for i=1:N)) == h
 			@test HalfIntArray(h,Tuple(half(0) for i=1:N)) == h
@@ -155,6 +157,8 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 			@test HalfIntegerArrays.unwraphalfint(h,parent(h)) === arr
 			@test SpinMatrix(h) === h
 			@test SpinMatrix(parent(h), h.j) == h
+			@test collect(h) == collect(parent(h))
+			@test Array(h) == collect(h)
 		end
 		function testSMfromArray(j)
 			for T in [Float64,ComplexF64]
@@ -368,7 +372,7 @@ end
 		    lininds = LinearIndicesHalfInt(l)
 		    @test lininds.lininds == l
 		    @test lininds.offsets == (HalfInt(0),HalfInt(0))
-		    @test axes(lininds) == axes(l) 
+		    @test axes(lininds) == axes(l)
 		end
 		h = HalfIntArray(rand(2,2), -half(1):half(1), -half(1):half(1))
 		lininds = LinearIndicesHalfInt(h)
@@ -381,6 +385,8 @@ end
 		end
 		@test first(lininds) == 1
 		@test last(lininds) == length(lininds) == length(h)
+		@test collect(lininds) == parent(lininds)
+		@test Array(lininds) == parent(lininds)
 		
 		@test lininds[lininds] == lininds
 		@test lininds[cartinds] == lininds
@@ -417,6 +423,8 @@ end
 		for (i,LI) in enumerate(lininds)
 			@test linindsHI[LI] == lininds[LI] == linindsHIP[i] == LI
 		end
+		@test collect(linindsHI) == collect(parent(linindsHI)) == collect(lininds)
+		@test Array(linindsHI) == collect(parent(linindsHI)) == collect(lininds)
 
 		r = axes(linindsHI,1)
 		@test linindsHI[r] == r
@@ -440,6 +448,9 @@ end
 		for (i,LI) in enumerate(lininds)
 			@test linindsHI[LI] == lininds[LI] == linindsHIP[i] == LI
 		end
+
+		@test collect(linindsHI) == collect(parent(linindsHI)) == collect(lininds)
+		@test Array(linindsHI) == collect(parent(linindsHI)) == collect(lininds)
 
 		@test linindsHI[1:length(linindsHI)] == 1:length(linindsHI)
 
@@ -609,10 +620,16 @@ end
 
 			h = HalfIntArray(rand(2,2),-half(1):half(1),-half(1):half(1))
 			c = CartesianIndicesHalfInt(axes(h))
+			lininds = LinearIndicesHalfInt(h)
 			@test c isa CartesianIndicesHalfInt{2,Tuple{Base.OneTo{Int},Base.OneTo{Int}}}
 			@test size(c) == (2,2)
 			@test length(c) == 4
 			@test axes(c) === axes(h)
+			@test collect(c) == parent(c)
+			@test Array(c) == parent(c)
+			@test c[lininds] == c
+			@test h[c] == h
+			@test_throws Exception CartesianIndices(h)
 
 			r = (-half(1):half(1),-half(1):half(1))
 			c = CartesianIndicesHalfInt(r)
@@ -620,13 +637,6 @@ end
 			@test size(c) == (2,2)
 			@test length(c) == 4
 			@test axes(c) === (IdOffsetRange(Base.OneTo(2),-half(3)),IdOffsetRange(Base.OneTo(2),-half(3)))
-
-			h = HalfIntArray(rand(2,2),-half(1):half(1),-half(1):half(1))
-			lininds = LinearIndicesHalfInt(h)
-			cartinds = CartesianIndicesHalfInt(h)
-			@test cartinds[lininds] == cartinds
-			@test h[cartinds] == h
-			@test_throws Exception CartesianIndices(h)
 
 			h = HalfIntArray(rand(2,2),1:2,1:2)
 			cindsHI = CartesianIndicesHalfInt(h)
@@ -646,11 +656,15 @@ end
 			@test h[CartesianIndicesHalfInt(()),1,1][] == h[1,1]
 			@test Base.checkbounds_indices(Bool, axes(h), (CartesianIndicesHalfInt(()),1,1))
 
+			@test collect(cindsHI) == parent(cindsHI)
+			@test Array(cindsHI) == collect(parent(cindsHI))
+
 			h = HalfIntArray(rand(3), -1:1)
 			c = CartesianIndicesHalfInt(h)
 			@test h[c] == h
 			@test h[CartesianIndicesHalfInt(()),-1][] == h[-1]
 			@test Base.checkbounds_indices(Bool, axes(h), (CartesianIndicesHalfInt(()),-1))
+			@test collect(c) == parent(c)
 
 			h = HalfIntArray(zeros())
 			c = CartesianIndicesHalfInt(h)

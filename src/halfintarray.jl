@@ -84,8 +84,8 @@ const HIAorSM = Union{HalfIntArray,SpinMatrix}
 # unwrap
 
 unwraphalfint(a::AbstractArray) = unwraphalfint(a, parent(a))
-unwraphalfint(a::A, b::B) where {A, B} = unwraphalfint(b, parent(b))
-unwraphalfint(a::AbstractHalfIntegerArray, b::B) where {A, B} = b
+unwraphalfint(a, b) = unwraphalfint(b, parent(b))
+unwraphalfint(a::AbstractHalfIntegerArray, b) = b
 
 offset(axparent::AbstractUnitRange, ax::AbstractUnitRange) = HalfInt(first(ax) - first(axparent))
 offset(axparent::AbstractUnitRange, ax::Integer) = HalfInt(one(first(axparent)) - first(axparent))
