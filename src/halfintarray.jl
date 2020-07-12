@@ -27,7 +27,7 @@ julia> h[1//2, 1//2]
 4
 ```
 """
-struct HalfIntArray{T,N,A<:AbstractArray} <: AbstractHalfIntegerArray{T,N}
+struct HalfIntArray{T,N,A<:AbstractArray} <: AbstractHalfIntegerWrapper{T,N}
     parent :: A
     offsets :: NTuple{N,HalfInt}
 end
@@ -62,7 +62,7 @@ julia> SpinMatrix(zeros(ComplexF64,3,3), 1)
  0.0+0.0im  0.0+0.0im  0.0+0.0im
 ```
 """
-struct SpinMatrix{T,A<:AbstractMatrix} <: AbstractHalfIntegerMatrix{T}
+struct SpinMatrix{T,A<:AbstractMatrix} <: AbstractHalfIntegerWrapper{T,2}
     parent :: A
     j :: HalfInt
 
@@ -199,6 +199,7 @@ end
 
 parenttype(::Type{HalfIntArray{T,N,AA}}) where {T,N,AA} = AA
 parenttype(::Type{SpinMatrix{T,AA}}) where {T,AA} = AA
+Base.IndexStyle(::Type{H}) where {H<:Union{HalfIntArray,SpinMatrix}} = IndexStyle(parenttype(H))
 
 Base.parent(A::HIAorSM) = A.parent
 

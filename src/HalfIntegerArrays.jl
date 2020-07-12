@@ -24,9 +24,19 @@ export LinearIndicesHalfInt
 
 Supertype for `N`-dimensional arrays (or array-like types) with elements of type `T`. 
 Such arrays may be indexed using integers as well as half-integers.
-[`HalfIntArray`](@ref), [`SpinMatrix`](@ref) and other types are subtypes of this.
 """
 abstract type AbstractHalfIntegerArray{T,N} <: AbstractArray{T,N} end
+
+"""
+    AbstractHalfIntegerWrapper{T,N} <: AbstractHalfIntegerArray{T,N}
+
+Supertype for `N`-dimensional arrays (or array-like types) with elements of type `T` 
+that wrap a parent array that has integer indices. The wrapper acts as a map between the 
+indices of the array and those of the parent.
+
+[`HalfIntArray`](@ref), [`SpinMatrix`](@ref) and other types are subtypes of this.
+"""
+abstract type AbstractHalfIntegerWrapper{T,N} <: AbstractHalfIntegerArray{T,N} end
 
 const AbstractHalfIntegerVector{T} = AbstractHalfIntegerArray{T,1}
 const AbstractHalfIntegerMatrix{T} = AbstractHalfIntegerArray{T,2}
@@ -41,7 +51,7 @@ around AbstractHalfIntegerArrays that are defined in Base or stdlib.
 This is because Base functions often rely on CartesianIndices and LinearIndices,
 whereas this package uses CartesianIndicesHalfInt and LinearIndicesHalfInt
 =# 
-const AbstractHalfIntegerArrayWrapper = Union{AbstractHalfIntegerArray,
+const AbstractHalfIntegerArrayOrWrapper = Union{AbstractHalfIntegerArray,
 	AdjOrTransAbsHalfIntVecOrMat}
 
 unsafeInt(d) = floor(Int, d)
@@ -56,7 +66,7 @@ include("arrayshow.jl")
 
 # Define functions common to the supertype
 
-Base.keys(h::AbstractHalfIntegerArrayWrapper) = CartesianIndicesHalfInt(axes(h))
+Base.keys(h::AbstractHalfIntegerArrayOrWrapper) = CartesianIndicesHalfInt(axes(h))
 Base.keys(h::AbstractHalfIntegerArray{<:Any,1}) = LinearIndicesHalfInt(h)
 
 Base.axes1(A::AbstractHalfIntegerArray{<:Any,0}) = Base.OneTo(1)
@@ -67,43 +77,42 @@ _maybetail(t::Tuple) = Base.tail(t)
 throw_lininderr() = throw(ArgumentError("linear indexing requires an integer index"))
 ensureInt(i) = isinteger(i) || throw_lininderr()
 
-Base.IndexStyle(::Type{HA}) where {HA<:AbstractHalfIntegerArray} = IndexStyle(parenttype(HA))
 parenttype(A::AbstractHalfIntegerArray) = parenttype(typeof(A))
 
 # Convert Real indices to HalfInt
-function Base.to_indices(A::AbstractHalfIntegerArrayWrapper, inds, I::Tuple{Real, Vararg{Any}})
+function Base.to_indices(A::AbstractHalfIntegerArrayOrWrapper, inds, I::Tuple{Real, Vararg{Any}})
 
     (HalfInt(first(I)), to_indices(A, _maybetail(inds), Base.tail(I))...)
 end
 
-@propagate_inbounds function Base.getindex(A::AbstractHalfIntegerArrayWrapper, i::Real, I::Real...)
+@propagate_inbounds function Base.getindex(A::AbstractHalfIntegerArrayOrWrapper, i::Real, I::Real...)
     A[HalfInt(i),HalfInt.(I)...]
 end
 
-@propagate_inbounds function Base.getindex(A::AbstractHalfIntegerArrayWrapper, i::Real)
+@propagate_inbounds function Base.getindex(A::AbstractHalfIntegerArrayOrWrapper, i::Real)
     ensureInt(i)
     A[unsafeInt(i)]
 end
 
-@propagate_inbounds function Base.getindex(A::AbstractHalfIntegerArrayWrapper, 
+@propagate_inbounds function Base.getindex(A::AbstractHalfIntegerArrayOrWrapper, 
     i1::Union{Real,CartesianIndex,CartesianIndexHalfInt},
     I::Union{Real,CartesianIndex,CartesianIndexHalfInt}...)
     
     A[to_indices(A, (i1, I...))...]
 end
 
-@propagate_inbounds function Base.setindex!(A::AbstractHalfIntegerArrayWrapper, val, i1::Real, I::Real...)
+@propagate_inbounds function Base.setindex!(A::AbstractHalfIntegerArrayOrWrapper, val, i1::Real, I::Real...)
     A[HalfInt(i1), HalfInt.(I)...] = val
     A
 end
 
-@propagate_inbounds function Base.setindex!(A::AbstractHalfIntegerArrayWrapper, val, i::Real)
+@propagate_inbounds function Base.setindex!(A::AbstractHalfIntegerArrayOrWrapper, val, i::Real)
     ensureInt(i)
     A[unsafeInt(i)] = val
     A
 end
 
-@propagate_inbounds function Base.setindex!(A::AbstractHalfIntegerArrayWrapper, v, 
+@propagate_inbounds function Base.setindex!(A::AbstractHalfIntegerArrayOrWrapper, v, 
     i1::Union{Real,CartesianIndex, CartesianIndexHalfInt}, 
     I::Union{Real, CartesianIndex, CartesianIndexHalfInt}...)
 
@@ -111,34 +120,34 @@ end
     A
 end
 
-@propagate_inbounds function Base.isassigned(A::AbstractHalfIntegerArray, I::Integer...)
+@propagate_inbounds function Base.isassigned(A::AbstractHalfIntegerWrapper, I::Integer...)
     @boundscheck checkbounds(A, I...)
     J = to_parentindices(axes(A), I)
     isassigned(parent(A), J...)
 end
-@propagate_inbounds function Base.isassigned(A::AbstractHalfIntegerArray, I::Union{Integer,Real}...)
+@propagate_inbounds function Base.isassigned(A::AbstractHalfIntegerWrapper, I::Union{Integer,Real}...)
     @boundscheck checkbounds(A, I...)
     J = to_parentindices(axes(A), I)
     isassigned(parent(A), J...)
 end
 
-Base.pairs(::IndexLinear, A::AbstractHalfIntegerArrayWrapper) = Iterators.Pairs(A, LinearIndicesHalfInt(A))
-Base.pairs(::IndexCartesian, A::AbstractHalfIntegerArrayWrapper) = Iterators.Pairs(A, CartesianIndicesHalfInt(axes(A)))
+Base.pairs(::IndexLinear, A::AbstractHalfIntegerArrayOrWrapper) = Iterators.Pairs(A, LinearIndicesHalfInt(A))
+Base.pairs(::IndexCartesian, A::AbstractHalfIntegerArrayOrWrapper) = Iterators.Pairs(A, CartesianIndicesHalfInt(axes(A)))
 
-Base.eachindex(::IndexCartesian, A::AbstractHalfIntegerArrayWrapper) = CartesianIndicesHalfInt(axes(A))
+Base.eachindex(::IndexCartesian, A::AbstractHalfIntegerArrayOrWrapper) = CartesianIndicesHalfInt(axes(A))
 
 function _all_match_first_shadow(f::F, inds, A, B...) where F<:Function
     (inds == f(A)) & _all_match_first_shadow(f, inds, B...)
 end
 _all_match_first_shadow(f::F, inds) where F<:Function = true
 
-@inline function Base.eachindex(::IndexCartesian, A::AbstractHalfIntegerArrayWrapper, B::AbstractHalfIntegerArrayWrapper...)
+@inline function Base.eachindex(::IndexCartesian, A::AbstractHalfIntegerArrayOrWrapper, B::AbstractHalfIntegerArrayOrWrapper...)
     axsA = axes(A)
     _all_match_first_shadow(axes, axsA, B...) || Base.throw_eachindex_mismatch(IndexCartesian(), A, B...)
     CartesianIndicesHalfInt(axsA)
 end
 
-function Base.collect(h::AbstractHalfIntegerArrayWrapper)
+function Base.collect(h::AbstractHalfIntegerArrayOrWrapper)
     b = Array{eltype(h)}(undef,size(h))
     @inbounds for (bi,hi) in zip(eachindex(b), eachindex(h))
         b[bi] = h[hi]
@@ -197,7 +206,7 @@ function Base.similar(::Type{T}, inds::Tuple{HalfIntAxis,Vararg{HalfIntAxis}}) w
 end
 
 for ax in [:HalfIntOffsetAxis, :OffsetAxis]
-    @eval Base.reshape(A::AbstractHalfIntegerArrayWrapper, inds::Tuple{$ax,Vararg{$ax}}) =
+    @eval Base.reshape(A::AbstractHalfIntegerArrayOrWrapper, inds::Tuple{$ax,Vararg{$ax}}) =
         HalfIntArray(reshape(parent(A), map(indexlength, inds)), map(indexoffset, inds))
 end
 
@@ -209,7 +218,7 @@ Base.reshape(A::AbstractHalfIntegerArray, inds::Vararg{Union{Colon,Int}}) = resh
 Base.reshape(A::AbstractHalfIntegerArray, inds::Vararg{Union{Int,AbstractUnitRange}}) = reshape(A, inds)
 Base.reshape(A::AbstractHalfIntegerArray, ::Colon) = A
 
-for DT in [:AbstractHalfIntegerArray, :AbstractHalfIntegerArrayWrapper]
+for DT in [:AbstractHalfIntegerArray, :AbstractHalfIntegerArrayOrWrapper]
 	@eval Base.reshape(A::$DT, inds::Tuple{ReshapedAxis,Vararg{ReshapedAxis}}) = reshape(parent(A), inds)
 	@eval Base.reshape(A::$DT, inds::Tuple{Int,Vararg{Int}}) = reshape(parent(A), inds)
 	@eval Base.reshape(A::$DT, inds::Tuple{Union{Int,Colon},Vararg{Union{Int,Colon}}}) = reshape(parent(A), inds)
@@ -222,7 +231,7 @@ for DT in [:AbstractHalfIntegerArray, :AbstractHalfIntegerArrayWrapper]
 end
 
 @static if isdefined(Base, :copyto_unaliased!)
-    function Base.copyto_unaliased!(deststyle::IndexStyle, dest::AbstractHalfIntegerArrayWrapper, srcstyle::IndexStyle, src::AbstractHalfIntegerArrayWrapper)
+    function Base.copyto_unaliased!(deststyle::IndexStyle, dest::AbstractHalfIntegerArrayOrWrapper, srcstyle::IndexStyle, src::AbstractHalfIntegerArrayOrWrapper)
         isempty(src) && return dest
         destinds, srcinds = LinearIndicesHalfInt(dest), LinearIndicesHalfInt(src)
         idf, isf = first(destinds), first(srcinds)

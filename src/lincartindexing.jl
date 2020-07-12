@@ -187,7 +187,7 @@ julia> c[1/2,1/2]
 CartesianIndexHalfInt(1/2, 1/2)
 ```
 """
-struct CartesianIndicesHalfInt{N,R} <: AbstractHalfIntegerArray{CartesianIndexHalfInt{N},N}
+struct CartesianIndicesHalfInt{N,R} <: AbstractHalfIntegerWrapper{CartesianIndexHalfInt{N},N}
     cartinds :: CartesianIndices{N,R}
     offsets :: NTuple{N,HalfInt}
 end
@@ -380,7 +380,7 @@ function Base.checkindex(::Type{Bool}, inds::Tuple, I::AbstractArray{<:Cartesian
 end
 
 # It might be possible to construct a LinearIndices range for integer indices
-function Base.CartesianIndices(A::AbstractHalfIntegerArrayWrapper)
+function Base.CartesianIndices(A::AbstractHalfIntegerArrayOrWrapper)
     CartesianIndices(IdentityUnitRange.(UnitRange{Int}.(axes(A))))
 end
 
@@ -437,7 +437,7 @@ julia> lindsv[0]
 0
 ```
 """
-struct LinearIndicesHalfInt{N,R<:NTuple{N,AbstractUnitRange{Int}}} <: AbstractHalfIntegerArray{HalfInt,N}
+struct LinearIndicesHalfInt{N,R<:NTuple{N,AbstractUnitRange{Int}}} <: AbstractHalfIntegerWrapper{HalfInt,N}
     lininds :: LinearIndices{N,R}
     offsets :: NTuple{N,HalfInt}
 end
@@ -550,6 +550,6 @@ function Base.hash(c::LinearIndicesHalfInt, h::UInt)
 end
 
 # It might be possible to construct a LinearIndices range for integer indices
-function Base.LinearIndices(A::AbstractHalfIntegerArrayWrapper)
+function Base.LinearIndices(A::AbstractHalfIntegerArrayOrWrapper)
     LinearIndices(IdentityUnitRange.(UnitRange{Int}.(axes(A))))
 end

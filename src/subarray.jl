@@ -1,5 +1,5 @@
 """
-	HalfIntSubArray{T,N,P,I,L} <: AbstractHalfIntegerArray{T,N}
+	HalfIntSubArray{T,N,P,I,L}
 
 `N`-dimensional view into a parent array (of type `P <: AbstractHalfIntegerArray`) 
 with an element type `T`, restricted by a tuple of indices (of type `I`). 
@@ -8,7 +8,8 @@ with an element type `T`, restricted by a tuple of indices (of type `I`).
 Their behavior is analogous to `SubArray`s, except they enable indexing with 
 half-integers.
 
-Construct `HalfIntSubArray`s using the `view` function.
+Construct `HalfIntSubArray`s using the `view` function, or equivalently 
+the `@view` macro.
 
 # Example
 ```jldoctest
@@ -46,7 +47,7 @@ julia> h
  2  10
 ```
 """
-struct HalfIntSubArray{T,N,P,I,L} <: AbstractHalfIntegerArray{T,N}
+struct HalfIntSubArray{T,N,P,I,L} <: AbstractHalfIntegerWrapper{T,N}
 	parent :: SubArray{T,N,P,I,L}
 	offsets :: NTuple{N,HalfInt} # only relevant for Cartesian Indexing
 end
@@ -54,6 +55,7 @@ end
 Base.parent(h::HalfIntSubArray) = h.parent
 
 parenttype(::Type{HalfIntSubArray{T,N,P,I,L}}) where {T,N,P,I,L} = SubArray{T,N,P,I,L}
+Base.IndexStyle(::Type{H}) where {H<:HalfIntSubArray} = IndexStyle(parenttype(H))
 
 subarrayoffsets(::Tuple{}) = ()
 subarrayoffsets(inds::Tuple{Real,Vararg{Any}}) = subarrayoffsets(Base.tail(inds))

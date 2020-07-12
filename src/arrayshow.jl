@@ -24,18 +24,13 @@ for DT in [:Integer, :HalfInteger]
     end
 end
 
-function Base.show(io::IO, X::HIAorSM)
-    Y = unwraphalfint(X)
-    show(io, Y)
+function Base.show(io::IO, X::AbstractHalfIntegerWrapper)
+    show(io, parent(X))
 end
 
 function Base.show(io::IO, X::AdjOrTransAbsHalfIntVecOrMat)
     Y = wrapperop(X)(unwraphalfint(X))
     show(io, Y)
-end
-
-function Base.show(io::IO, X::Union{LinearIndicesHalfInt,CartesianIndicesHalfInt})
-    show(io, collect(X))
 end
 
 Base.show(io::IO, i::CartesianIndexHalfInt) = (print(io, "CartesianIndexHalfInt"); show(io, Tuple(i)))
