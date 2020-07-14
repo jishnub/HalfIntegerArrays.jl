@@ -48,6 +48,12 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 				testHIA(T,2,h,arr,j)
 				h = HalfIntArray(arr, -j:j, -j:j)
 				testHIA(T,2,h,arr,j)
+
+				@test isassigned(h, j, j)
+				@test isassigned(h, j, j, 1)
+				@test !isassigned(h, j, j+1)
+				@test !isassigned(h, 0.5, 0)
+				@test !isassigned(h, 0.1, 0)
 			
 				arr = zeros(T,Int(2j+1))
 				h = HalfIntArray(arr, (HalfInt(-j-1),))
@@ -88,10 +94,33 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 		end
 
 		h = HalfIntArray(rand(2,2),0:1,0:1)
+		@test isassigned(h,1) # linear indexing
 		@test isassigned(h,1,1)
+		@test isassigned(h,1,1,1)
+		@test isassigned(h,1.0,1)
 		@test isassigned(h,HalfInt(1),HalfInt(1))
 		@test isassigned(h,HalfInt(1),1)
 		@test isassigned(h,1,HalfInt(1))
+		@test !isassigned(h, 0.5, 0.5)
+		@test !isassigned(h, 0.5, 1)
+		@test !isassigned(h, 1, 0.5)
+
+		h = HalfIntArray(rand(2),3:4)
+		@test !isassigned(h,2)
+		@test !isassigned(h,2.0)
+		@test !isassigned(h,2, 1)
+		@test !isassigned(h,2.5)
+		@test !isassigned(h,2.5, 1)
+		@test isassigned(h,3)
+		@test isassigned(h,3.0)
+		@test isassigned(h,3, 1)
+		@test !isassigned(h,3.5)
+		@test !isassigned(h,3.5, 1)
+		@test isassigned(h,4)
+		@test isassigned(h,4.0)
+		@test isassigned(h,4, 1)
+		@test !isassigned(h,4.5)
+		@test !isassigned(h,4.5, 1)
 
 		@testset "Initializers" begin
 			function testnothingmissing(T)
@@ -165,6 +194,12 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 				arr = zeros(T,Int(2j+1),Int(2j+1))
 				h = SpinMatrix(arr, j)
 				testSM(T,2,h,arr,j)
+
+				@test isassigned(h, j, j)
+				@test isassigned(h, j, j, 1)
+				@test !isassigned(h, j, j+1)
+				@test !isassigned(h, 0.5, 0)
+				@test !isassigned(h, 0.1, 0)
 
 				h = SpinMatrix(arr)
 				testSM(T,2,h,arr,j)			
@@ -282,6 +317,25 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 		r = IdOffsetRange(1:3, HalfInt(2))
 		tests(r,1:3,3,5,2)
 		@test eltype(r) == HalfInt
+		@test !isassigned(r, 2)
+		@test !isassigned(r, 2, 1)
+		@test !isassigned(r, HalfInt(2.5))
+		@test !isassigned(r, 2.5)
+		@test !isassigned(r, HalfInt(2.5), 1)
+		@test isassigned(r, 3)
+		@test isassigned(r, 3.0)
+		@test isassigned(r, HalfInt(3))
+		@test isassigned(r, 3, 1)
+		@test !isassigned(r, HalfInt(3.5))
+		@test !isassigned(r, 3.5)
+		@test !isassigned(r, 3.5, 1)
+		@test isassigned(r, 4)
+		@test isassigned(r, HalfInt(4))
+		@test isassigned(r, 4.0)
+		@test isassigned(r, 4, 1)
+		@test !isassigned(r, HalfInt(4.5))
+		@test !isassigned(r, 4.5)
+		@test !isassigned(r, 4.5, 1)
 
 		r = IdOffsetRange{HalfInt,UnitRange{Int}}(1:3, HalfInt(2))
 		tests(r,1:3,3,5,2)
@@ -2248,6 +2302,12 @@ end
 						end
 					end
 				end
+
+				h = HalfIntArray(rand(2,2), 3:4, 4:5)
+				@test !isassigned(transpose(h), 3, 4)
+				@test !isassigned(transpose(h), 3.5, 4)
+				@test isassigned(transpose(h), 5, 4)
+				@test isassigned(transpose(h), 5.0, 4)
 			end 
 			@testset "SpinMatrix" begin
 				@testset "CartesianIndices" begin
@@ -2278,6 +2338,15 @@ end
 						end
 					end
 				end
+
+				s = SpinMatrix(rand(2,2))
+				@test isassigned(transpose(s), -0.5, -0.5)
+				@test isassigned(transpose(s), 0.5, -0.5)
+				@test isassigned(transpose(s), -0.5, 0.5)
+				@test isassigned(transpose(s), 0.5, 0.5)
+				@test !isassigned(transpose(s), 0, 0)
+				@test !isassigned(transpose(s), 0, 0.5)
+				@test !isassigned(transpose(s), 1, 0.5)
 			end
 		end
 		@testset "adjoint" begin
@@ -2313,6 +2382,12 @@ end
 						end
 					end
 				end
+
+				h = HalfIntArray(rand(2,2), 3:4, 4:5)
+				@test !isassigned(adjoint(h), 3, 4)
+				@test !isassigned(adjoint(h), 3.5, 4)
+				@test isassigned(adjoint(h), 5, 4)
+				@test isassigned(adjoint(h), 5.0, 4)
 			end 
 			@testset "SpinMatrix" begin
 				@testset "CartesianIndices" begin
@@ -2345,6 +2420,15 @@ end
 						end
 					end
 				end
+
+				s = SpinMatrix(rand(2,2))
+				@test isassigned(adjoint(s), -0.5, -0.5)
+				@test isassigned(adjoint(s), 0.5, -0.5)
+				@test isassigned(adjoint(s), -0.5, 0.5)
+				@test isassigned(adjoint(s), 0.5, 0.5)
+				@test !isassigned(adjoint(s), 0, 0)
+				@test !isassigned(adjoint(s), 0, 0.5)
+				@test !isassigned(adjoint(s), 1, 0.5)
 			end
 		end
 	end

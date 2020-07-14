@@ -120,13 +120,34 @@ end
     A
 end
 
-@propagate_inbounds function Base.isassigned(A::AbstractHalfIntegerWrapper, I::Integer...)
-    @boundscheck checkbounds(A, I...)
+indicescompatible(::Tuple{}, ::Tuple{Real, Vararg{Any}}) = true
+indicescompatible(::Tuple{IdOffsetRange,Vararg{Any}}, ::Tuple{}) = true
+indicescompatible(::Tuple{}, ::Tuple{}) = true
+function indicescompatible(ax::Tuple{IdOffsetRange,Vararg{Any}}, I::Tuple{Real, Vararg{Any}})
+    isinteger(first(ax).offset + first(I)) && indicescompatible(Base.tail(ax), Base.tail(I))
+end
+
+# Linear indexing
+function Base.isassigned(A::AbstractHalfIntegerWrapper, i::Integer)
+    isassigned(parent(A), i)
+end
+# 1D arrays use Cartesian Indexing
+function Base.isassigned(A::AbstractHalfIntegerWrapper{<:Any,1}, i::Integer)
+    ret = checkbounds(Bool, A, i) && isinteger(Base.axes(A,1).offset)
+    ret || return false
+    J = parentindex(axes(A,1), i)
+    isassigned(parent(A), J...)
+end
+function Base.isassigned(A::AbstractHalfIntegerWrapper, I::Integer...)
+    ret = checkbounds(Bool, A, I...) && all(x->isinteger(x.offset), axes(A))
+    ret || return false
     J = to_parentindices(axes(A), I)
     isassigned(parent(A), J...)
 end
-@propagate_inbounds function Base.isassigned(A::AbstractHalfIntegerWrapper, I::Union{Integer,Real}...)
-    @boundscheck checkbounds(A, I...)
+function Base.isassigned(A::AbstractHalfIntegerWrapper, I::Real...)
+    all(isinteger, I) && return isassigned(A, map(Integer, I)...)
+    ret = checkbounds(Bool, A, I...) && indicescompatible(axes(A), I)
+    ret || return false
     J = to_parentindices(axes(A), I)
     isassigned(parent(A), J...)
 end

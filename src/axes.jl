@@ -157,7 +157,13 @@ function Base.checkindex(::Type{Bool}, inds::IdOffsetRange, i::HalfInt)
     Base.checkindex(Bool, parent(inds), i - offset(inds)) && isinteger(offset(inds) + i)
 end
 
-function Base.isassigned(r::IdOffsetRange, I::Union{HalfInt,Int}...)
+function Base.isassigned(r::IdOffsetRange, I::Integer...)
+    (checkbounds(Bool, r, I...) && isinteger(r.offset)) || return false
     J = to_parentindices(axes(r),I)
-    isassigned(parent(r),J...)
+    isassigned(parent(r), J...)
+end
+function Base.isassigned(r::IdOffsetRange, I::Real...)
+    (checkbounds(Bool, r, I...) && indicescompatible((r,), I)) || return false
+    J = to_parentindices(axes(r),I)
+    isassigned(parent(r), J...)
 end

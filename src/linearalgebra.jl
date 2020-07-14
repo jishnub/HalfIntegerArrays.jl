@@ -2,8 +2,8 @@ import LinearAlgebra: wrapperop
 
 for AT in [:AdjOrTransAbsHalfIntMatrix, :AdjOrTransAbsHalfIntVector]
 	for IT in [:Integer, :Real]
-		@eval @propagate_inbounds function Base.isassigned(A::$AT, I::$IT...)
-			@boundscheck checkbounds(A, I...)
+		@eval function Base.isassigned(A::$AT, I::$IT...)
+			checkbounds(Bool, A, I...) || return false
 		    K = trimtoN(I,Val(2))
 		    isassigned(parent(A), reverse(K)...)
 		end
