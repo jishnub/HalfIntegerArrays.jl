@@ -1,3 +1,31 @@
+struct HalfIntBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{N} end
+
+HalfIntBroadcastStyle{M}(::Val{N}) where {M,N} = HalfIntBroadcastStyle{N}()
+
+function Base.similar(bc::Broadcast.Broadcasted{HalfIntBroadcastStyle{N}}, ::Type{T}) where {T,N}
+	HalfIntArray{T,N}(undef, axes(bc)...)
+end
+
+Base.eachindex(bc::Broadcast.Broadcasted{<:HalfIntBroadcastStyle}) = CartesianIndicesHalfInt(axes(bc))
+
+Base.BroadcastStyle(::Type{<:AbstractHalfIntegerArray{T,N}}) where {T,N} = HalfIntBroadcastStyle{N}()
+
+@inline function Base.copyto!(dest::AbstractArray, bc::Broadcast.Broadcasted{<:HalfIntBroadcastStyle})
+	axes(dest) == axes(bc) || Broadcast.throwdm(axes(dest), axes(bc))
+    # Performance optimization: broadcast!(identity, dest, A) is equivalent to copyto!(dest, A) if indices match
+    if bc.f === identity && bc.args isa Tuple{AbstractArray} # only a single input argument to broadcast!
+        A = bc.args[1]
+        if axes(dest) == axes(A)
+            return copyto!(dest, A)
+        end
+    end
+    bc′ = Broadcast.preprocess(dest, bc)
+    @simd for I in eachindex(bc′)
+        @inbounds dest[I] = bc′[I]
+    end
+    return dest
+end
+
 @inline function Base.getindex(bc::Broadcast.Broadcasted, I::CartesianIndexHalfInt)
     @boundscheck checkbounds(bc, I)
     @inbounds Broadcast._broadcast_getindex(bc, I)
@@ -22,12 +50,8 @@ end
 	CartesianIndexHalfInt(_newindex(Tuple(I), keep, Idefault))
 end
 
-Base.dataids(A::AbstractHalfIntegerArray) = Base.dataids(parent(A))
-Broadcast.broadcast_unalias(dest::AbstractHalfIntegerArray, src::AbstractHalfIntegerArray) = parent(dest) === parent(src) ? src : Broadcast.unalias(dest, src)
-
-function Base.eachindex(bc::Broadcast.Broadcasted{<:Union{Nothing, Broadcast.BroadcastStyle},<:Tuple{IdOffsetRange,Vararg{IdOffsetRange}}})
-	CartesianIndicesHalfInt(axes(bc))
-end
+Base.dataids(A::AbstractHalfIntegerWrapper) = Base.dataids(parent(A))
+Broadcast.broadcast_unalias(dest::AbstractHalfIntegerWrapper, src::AbstractHalfIntegerWrapper) = parent(dest) === parent(src) ? src : Broadcast.unalias(dest, src)
 
 @inline Base.checkbounds(bc::Broadcast.Broadcasted, I::CartesianIndexHalfInt) =
     Base.checkbounds_indices(Bool, axes(bc), (I,)) || Base.throw_boundserror(bc, (I,))

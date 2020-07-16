@@ -7,7 +7,7 @@ for DT in [:Integer, :HalfInteger]
         
         for (k, j) = enumerate(cols)
             k > length(A) && break
-            if isassigned(X,HalfInt(i),HalfInt(j))
+            if isassigned(X, i, j)
                 x = X[i,j]
                 a = Base.alignment(io, x)
                 sx = sprint(show, x, context=io, sizehint=0)
@@ -36,6 +36,9 @@ end
 Base.show(io::IO, i::CartesianIndexHalfInt) = (print(io, "CartesianIndexHalfInt"); show(io, Tuple(i)))
 Base.show(io::IO, r::OneTo) = print(io, "HalfIntegerArrays.OneTo(", r.stop, ")")
 Base.show(io::IO, r::IdOffsetRange) = print(io,first(r), ':', last(r))
+
+# In general collect the array before displaying
+Base.show(io::IO, a::AbstractHalfIntegerArray) = show(io, collect(a))
 
 function Base.show_nd(io::IO, a::AbstractHalfIntegerArray, print_matrix::Function, label_slices::Bool)
     limit::Bool = get(io, :limit, false)
@@ -81,14 +84,19 @@ function Base.show_nd(io::IO, a::AbstractHalfIntegerArray, print_matrix::Functio
     end
 end
 
-function Base.replace_in_print_matrix(A::AbstractHalfIntegerMatrix, i::HalfInteger, j::HalfInteger, s::AbstractString)
-    J = to_parentindices(axes(A),(i,j))
-    Base.replace_in_print_matrix(parent(A),J...,s)
-end
-function Base.replace_in_print_matrix(A::AbstractHalfIntegerVector, i::HalfInteger, j::HalfIntegerOrInteger, s::AbstractString)
-    i′ = parentindex(Base.axes1(A), i)
-    ensureInt(j)
-    Base.replace_in_print_matrix(parent(A),i′,unsafeInt(j),s)
+Base.replace_in_print_matrix(A::AbstractMatrix,i::HalfIntegerOrInteger,j::HalfIntegerOrInteger,s::AbstractString) = s
+Base.replace_in_print_matrix(A::AbstractVector,i::HalfIntegerOrInteger,j::HalfIntegerOrInteger,s::AbstractString) = s
+
+for DT in [:Integer, :HalfIntegerOrInteger]
+    @eval function Base.replace_in_print_matrix(A::AbstractHalfIntegerWrapper{<:Any,2}, i::$DT, j::$DT, s::AbstractString)
+        J = to_parentindices(axes(A),(i,j))
+        Base.replace_in_print_matrix(parent(A),J...,s)
+    end
+    @eval function Base.replace_in_print_matrix(A::AbstractHalfIntegerWrapper{<:Any,1}, i::$DT, j::$DT, s::AbstractString)
+        i′ = parentindex(Base.axes1(A), i)
+        ensureInt(j)
+        Base.replace_in_print_matrix(parent(A),i′,unsafeInt(j),s)
+    end
 end
 
 for DT in [:Integer, :HalfIntegerOrInteger]
@@ -98,12 +106,10 @@ for DT in [:Integer, :HalfIntegerOrInteger]
 end
 
 function Base.showarg(io::IO, a::HalfIntSubArray, toplevel)
-    print(io, "HalfIntSubArray(")
+    print(io, "view(")
     Base.showarg(io, parent(a), false)
-    if ndims(a) > 0
-        iocompact = IOContext(io, :compact => true)
-        Base.showindices(iocompact, UnitRange.(axes(a))...)
-    end
+    iocompact = IOContext(io, :compact => true)
+    Base.showindices(iocompact, a.indices...)
     print(io, ')')
     toplevel && print(io, " with eltype ", eltype(a))
 end

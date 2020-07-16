@@ -4,10 +4,9 @@ using LinearAlgebra
 using HalfIntegers
 using OffsetArrays
 
-import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
+import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex, IdentityUnitRange
 
-@test isempty(Test.detect_ambiguities(HalfIntegerArrays, Base, Core))
-@test isempty(Test.detect_ambiguities(HalfIntegerArrays, OffsetArrays))
+@test isempty(Test.detect_ambiguities(HalfIntegerArrays, Base, Core, OffsetArrays))
 
 @testset "Constructor" begin
 	@testset "parent index" begin
@@ -35,6 +34,8 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 			@test HalfIntegerArrays.unwraphalfint(h,parent(h)) === arr
 			@test collect(h) == collect(parent(h))
 			@test Array(h) == collect(h)
+
+			@test sizeof(h) == sizeof(arr)
 
 			@test HalfIntArray(h,Tuple(0 for i=1:N)) == h
 			@test HalfIntArray(h,Tuple(half(0) for i=1:N)) == h
@@ -188,6 +189,8 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 			@test SpinMatrix(parent(h), h.j) == h
 			@test collect(h) == collect(parent(h))
 			@test Array(h) == collect(h)
+
+			@test sizeof(h) == sizeof(arr)
 		end
 		function testSMfromArray(j)
 			for T in [Float64,ComplexF64]
@@ -404,6 +407,16 @@ import HalfIntegerArrays: IdOffsetRange, OneTo, offset, parentindex
 		@test convert(AbstractUnitRange{Int}, OneTo(3)) === Base.OneTo(3)
 	end
 end
+
+# define a subtype for which indexing is undefined
+struct abc{T,N,C} <: HalfIntegerArrays.AbstractHalfIntegerArray{T,N}
+	a :: Array{T,N}
+	is :: C
+end
+
+Base.size(x::abc) = size(x.a)
+Base.axes(x::abc) = axes(x.a)
+Base.IndexStyle(::Type{<:abc{<:Any,<:Any,C}}) where {C} = C()
 
 @testset "indexing" begin
 	@testset "LinearIndices" begin
@@ -685,6 +698,10 @@ end
 			@test h[c] == h
 			@test_throws Exception CartesianIndices(h)
 
+			for I in c
+				@test h[I] == h.parent[I.parent]
+			end
+
 			r = (-half(1):half(1),-half(1):half(1))
 			c = CartesianIndicesHalfInt(r)
 			@test c isa CartesianIndicesHalfInt{2,Tuple{Base.OneTo{Int},Base.OneTo{Int}}}
@@ -710,8 +727,24 @@ end
 			@test h[CartesianIndicesHalfInt(()),1,1][] == h[1,1]
 			@test Base.checkbounds_indices(Bool, axes(h), (CartesianIndicesHalfInt(()),1,1))
 
+			for I in cindsHI
+				@test h[I] == h.parent[I.parent]
+			end
+
 			@test collect(cindsHI) == parent(cindsHI)
 			@test Array(cindsHI) == collect(parent(cindsHI))
+
+			h = HalfIntArray(rand(2,2),-1//2:1//2, -1//2:1//2)
+			cindsHI = CartesianIndicesHalfInt(h)
+			for I in cindsHI
+				@test h[I] == h.parent[I.parent]
+			end
+			for i2 in axes(h,2), i1 in axes(h,1)
+				@test cindsHI[i1,i2] == CartesianIndexHalfInt(i1,i2)
+				@test cindsHI[i1,float(i2)] == CartesianIndexHalfInt(i1,i2)
+				@test cindsHI[float(i1),i2] == CartesianIndexHalfInt(i1,i2)
+				@test cindsHI[float(i1),float(i2)] == CartesianIndexHalfInt(i1,i2)
+			end
 
 			h = HalfIntArray(rand(3), -1:1)
 			c = CartesianIndicesHalfInt(h)
@@ -719,6 +752,21 @@ end
 			@test h[CartesianIndicesHalfInt(()),-1][] == h[-1]
 			@test Base.checkbounds_indices(Bool, axes(h), (CartesianIndicesHalfInt(()),-1))
 			@test collect(c) == parent(c)
+
+			for I in c
+				@test h[I] == h.parent[I.parent]
+			end
+
+			h = HalfIntArray(rand(3), -3//2:1//2)
+			c = CartesianIndicesHalfInt(h)
+			@test h[c] == h
+			@test h[CartesianIndicesHalfInt(()),-1//2][] == h[-1//2]
+			@test Base.checkbounds_indices(Bool, axes(h), (CartesianIndicesHalfInt(()),-1//2))
+			@test collect(c) == parent(c)
+
+			for I in c
+				@test h[I] == h.parent[I.parent]
+			end
 
 			h = HalfIntArray(zeros())
 			c = CartesianIndicesHalfInt(h)
@@ -728,6 +776,10 @@ end
 			@test axes(h′) == (1:1,1:1)
 			@test h′[1,1] == h[]
 			@test Base.checkbounds_indices(Bool, axes(h), (CartesianIndicesHalfInt((1:1,1:1)),1))
+
+			for I in c
+				@test h[I] == h.parent[I.parent]
+			end
 
 			@test Base.index_ndims(CartesianIndicesHalfInt((1:1,1:1))) == (true,true)
 			@test Base.index_ndims(CartesianIndicesHalfInt((1:1,))) == (true,)
@@ -768,6 +820,8 @@ end
 		@test eachindex(h) === Base.OneTo(4)
 		@test eachindex(IndexLinear(),h) === Base.OneTo(4) 
 		@test eachindex(IndexCartesian(),h) === CartesianIndicesHalfInt(axes(h))
+
+		@test eachindex(IndexCartesian(), h, h) ===  CartesianIndicesHalfInt(axes(h))
 	end
 	
 	js = [0,1//2,1]
@@ -785,7 +839,7 @@ end
 					for i in eachindex(a,h)
 						@test h[i] == a[i]
 						@test h[float(i)] == a[i]
-						@test_throws ArgumentError h[float(i) + 0.5]
+						@test_throws Exception h[float(i) + 0.5]
 						@test h[Rational(i)] == a[i]
 					end
 					for (j,aj) in zip(axes(h,2),axes(a,2)), 
@@ -872,17 +926,17 @@ end
 						for (ind,i1) in enumerate(axes(h,1))
 							@test h′[ind] == h[i1,i2]
 						end
-						if VERSION >= v"1.2"
-							h′ = h[Base.IdentityUnitRange(-j:j),i2]
-							@test axes(h′,1) == -j:j
-							for i1 in axes(h,1)
-								@test h′[i1] == h[i1,i2]
-							end
-						end
+							
 						if isinteger(j)
 							h′ = h[Base.OneTo(Int(j)),i2]
 							for ind in axes(h′,1)
 								@test h′[ind] == h[ind,i2]
+							end
+
+							h′ = h[IdentityUnitRange(-Int(j):Int(j)),i2]
+							@test axes(h′,1) == -j:j
+							for i1 in axes(h,1)
+								@test h′[i1] == h[i1,i2]
 							end
 						end
 
@@ -911,8 +965,8 @@ end
 						for (ind,i2) in enumerate(axes(h,2))
 							@test h′[ind] == h[i1,i2]
 						end
-						if VERSION >= v"1.2"
-							h′ = h[i1,Base.IdentityUnitRange(-j:j)]
+						if isinteger(j)
+							h′ = h[i1, IdentityUnitRange(-Int(j):Int(j))]
 							@test axes(h′,1) == -j:j
 							for i2 in axes(h,2)
 								@test h′[i2] == h[i1,i2]
@@ -1135,15 +1189,15 @@ end
 						h[-j:j,i2] .= val
 						@test all(h[-j:j,i2] .== val)
 
-						if VERSION >= v"1.2"
-							val = rand()
-							h[Base.IdentityUnitRange(-j:j),i2] .= val
-							@test all(h[Base.IdentityUnitRange(-j:j),i2] .== val)
-						end
 						if isinteger(j)
 							val = rand()
 							h[Base.OneTo(Int(j)),i2] .= val
 							@test all(h[Base.OneTo(Int(j)),i2] .== val)
+
+							idax = IdentityUnitRange(-Int(j):Int(j))
+							val = rand()
+							h[idax,i2] .= val
+							@test all(h[idax,i2] .== val)
 						end
 
 						val = rand()
@@ -1159,11 +1213,12 @@ end
 						val = rand()
 						h[i1,-j:j] .= val
 						@test all(h[i1,-j:j] .== val)
-						
-						if VERSION >= v"1.2"
+
+						if isinteger(j)						
 							val = rand()
-							h[i1,Base.IdentityUnitRange(-j:j)] .= val
-							@test all(h[i1,Base.IdentityUnitRange(-j:j)] .== val)
+							idax = IdentityUnitRange(-Int(j):Int(j))
+							h[i1, idax] .= val
+							@test all(h[i1, idax] .== val)
 						end
 
 						val = rand()
@@ -1363,8 +1418,8 @@ end
 					for (ind,i1) in enumerate(axes(h,1))
 						@test h′[ind] == h[i1,i2]
 					end
-					if VERSION >= v"1.2"
-						h′ = h[Base.IdentityUnitRange(-j:j),i2]
+					if isinteger(j)
+						h′ = h[IdentityUnitRange(-Int(j):Int(j)),i2]
 						@test axes(h′,1) == -j:j
 						for i1 in axes(h,1)
 							@test h′[i1] == h[i1,i2]
@@ -1384,8 +1439,8 @@ end
 					for (ind,i2) in enumerate(axes(h,2))
 						@test h′[ind] == h[i1,i2]
 					end
-					if VERSION >= v"1.2"
-						h′ = h[i1,Base.IdentityUnitRange(-j:j)]
+					if isinteger(j)
+						h′ = h[i1, IdentityUnitRange(-Int(j):Int(j))]
 						@test axes(h′,1) == -j:j
 						for i2 in axes(h,2)
 							@test h′[i2] == h[i1,i2]
@@ -1483,15 +1538,15 @@ end
 					h[-j:j,i2] .= val
 					@test all(h[-j:j,i2] .== val)
 
-					if VERSION >= v"1.2"
-						val = rand()
-						h[Base.IdentityUnitRange(-j:j),i2] .= val
-						@test all(h[Base.IdentityUnitRange(-j:j),i2] .== val)
-					end
 					if isinteger(j)
 						val = rand()
 						h[Base.OneTo(Int(j)),i2] .= val
 						@test all(h[Base.OneTo(Int(j)),i2] .== val)
+
+						val = rand()
+						idax = IdentityUnitRange(-Int(j):Int(j))
+						h[idax,i2] .= val
+						@test all(h[idax,i2] .== val)
 					end
 
 					val = rand()
@@ -1508,10 +1563,11 @@ end
 					h[i1,-j:j] .= val
 					@test all(h[i1,-j:j] .== val)
 
-					if VERSION >= v"1.2"
+					if isinteger(j)
 						val = rand()
-						h[i1,Base.IdentityUnitRange(-j:j)] .= val
-						@test all(h[i1,Base.IdentityUnitRange(-j:j)] .== val)
+						idax = IdentityUnitRange(-Int(j):Int(j))
+						h[i1,idax] .= val
+						@test all(h[i1,idax] .== val)
 					end
 
 					val = rand()
@@ -1617,6 +1673,35 @@ end
 
 		@test v[CartesianIndicesHalfInt(v)] == v
 	end
+
+	# subtypes must define their own scalar indexing
+	# default to an error if a method doesn't exist
+	@testset "subtypes" begin
+		function test(a::abc{<:Any,<:Any,IndexLinear})
+			@test_throws ErrorException a[1]
+			@test_throws ErrorException a[1] = 4
+		end
+		function test(a::abc{<:Any,<:Any,IndexCartesian})
+			@test_throws ErrorException a[1,1]
+		    @test_throws ErrorException a[1,1] = 4
+		    @test_throws ErrorException a'[1,1]
+		    @test_throws ErrorException a'[1,1] = 4
+		    @test_throws ErrorException a'[1]
+		    @test_throws ErrorException a'[1] = 4
+		end
+
+	    a = abc(zeros(3,3), IndexCartesian());
+	    test(a);
+
+	    a = abc(zeros(3,3), IndexLinear());
+	    test(a);
+
+	    b = abc(zeros(3), IndexLinear());
+	    test(b);
+	    
+	    b = abc(zeros(3), IndexCartesian());
+	    test(b);
+	end
 end
 
 @testset "axes operations" begin
@@ -1629,10 +1714,8 @@ end
 	@test Base.compute_offset1(h,1,size(h),axes(h),(0,)) == 1
 	@test Base.compute_offset1(h,1,size(h),axes(h),(1,)) == 2
 
-	if VERSION >= v"1.2"
-		r2 = Base.IdentityUnitRange(IdOffsetRange(1:3, HalfInt(2)))
-		@test Base.reduced_index(r2) == IdOffsetRange(3:3, HalfInt(0))
-	end
+	r2 = IdentityUnitRange(IdOffsetRange(1:3, HalfInt(2)))
+	@test Base.reduced_index(r2) == IdOffsetRange(3:3, HalfInt(0))
 end
 
 @testset "mutate HalfIntVector" begin
@@ -1659,8 +1742,7 @@ end
 			h = HalfIntArray(ones())
 			v = @view h[]
 			@test ndims(v) == 0
-			@test v[] === h[]
-			@test v[1] === h[]
+			@test v[] == v[1] == v[1.0] == v[HalfInt(1)] === h[]
 			@test axes(v) === axes(h) == ()
 			@test v[:] == h[:]
 
@@ -1670,9 +1752,7 @@ end
 			for v in [v1,v2,v3]
 				@test ndims(v) == 1
 				@test axes(v) == (IdOffsetRange(Base.OneTo(1)),)
-				@test v[] == h[]
-				@test v[1] == h[]
-				@test v[1,1] == h[]
+				@test v[] == v[1] == v[HalfInt(1)] == v[1.0] == v[1,1] == v[1.0, 1] == h[]
 				@test ndims(v[:]) == 1
 				@test v[:] == h[:]
 				@test ndims(v[:,:]) == 2
@@ -1682,20 +1762,34 @@ end
 			v = @view h[]
 			v[] = 4
 			@test h[] == 4
+			@test v[] == v[1] == v[1,1] == v[1.0, 1] == v[1,1,1] == 4
+			
 			v .= 5
 			@test h[] == 5
+			@test v[] == v[1] == v[1,1] == v[1.0, 1] == v[1,1,1] == 5
+
+			v[1] = 6
+			@test h[] == 6
+			@test v[] == v[1] == v[1,1] == v[1.0, 1] == v[1,1,1] == 6
 		end
 		@testset "1D" begin
-			h = HalfIntArray(rand(3), 0:2)
+			h = HalfIntArray(zeros(3), 0:2)
 
 			@testset "0D slice" begin
 				v = @view h[0]
 				@test v[] == h[0]
 				v[] = 34
 				@test h[0] == 34
+
+				@test v[] == v[1] == v[1,1] == v[1.0,1] == v[1,1,1] == 34
+
+				v[1] = 4
+				@test v[] == v[1] == v[1,1] == v[1.0,1] == v[1,1,1] == 4
+
+				@test sizeof(v) == sizeof(copy(v))
 			end
 			
-			@test_throws BoundsError @view h[]
+			@test_throws Exception @view h[]
 
 			@testset "entire array" begin
 				v1 = @view h[:]
@@ -1710,6 +1804,9 @@ end
 				v2 = @view h[:,1]
 				v3 = @view h[:,1,1]
 
+				@test copy(v2) == h
+				@test sizeof(v2) == sizeof(h)
+
 				for v in [v1, v2, v3]
 					@test ndims(v) == 1
 					@test axes(v) === axes(h)
@@ -1721,6 +1818,15 @@ end
 					@test all(h[:,1] .== val)
 					@test all(h[:,:] .== val)
 				end
+			end
+
+			@testset "FastSubArray" begin
+			    v = @view h[0:2:2]
+			    @test axes(v,1) == 1:2
+			    v[1] = 90
+			    @test v[1] == h[0] == 90
+			    v[2] = 45
+			    @test v[2] == h[2] == 45
 			end
 
 			v = @view h[:,:]
@@ -1742,8 +1848,8 @@ end
 			v .= 4
 			@test all(h .== 4)
 
-			@test_throws BoundsError @view h[-1]
-			@test_throws BoundsError @view h[1:3]
+			@test_throws Exception @view h[-1]
+			@test_throws Exception @view h[1:3]
 		end
 		@testset "2D" begin
 			h = HalfIntArray(rand(2,4), 0:1, -half(3):half(3))
@@ -1755,6 +1861,11 @@ end
 				@test v[1] == h[0,1/2]
 				v[] = 40
 				@test h[0,1/2] == 40
+				@test v[] == v[1] == v[1,1] == v[1.0,1] == v[1,1,1] == 40
+
+				v[1] = 4
+				@test h[0,1/2] == 4
+				@test v[] == v[1] == v[1,1] == v[1.0,1] == v[1,1,1] == 4
 			end
 
 			@testset "1D view" begin
@@ -1764,6 +1875,10 @@ end
 				@test all(v .== vec(h))
 				v .= 1
 				@test all(h .== 1)
+
+				@test v[1] == h[1]
+
+				@test IndexStyle(v) == IndexLinear()
 				
 				v = vec(h)
 				@test ndims(v) == 1
@@ -1776,11 +1891,10 @@ end
 				v1 = @view h[:,:]
 				@test h[CartesianIndicesHalfInt(h)] == v1[CartesianIndicesHalfInt(v1)]
 				@test h[LinearIndicesHalfInt(h)] == v1[LinearIndicesHalfInt(v1)]
-				@test HalfIntegerArrays.parenttype(typeof(v1)) == typeof(parent(v1))
+				@test IndexStyle(v1) == IndexLinear()
 
 				v2 = @view h[:,:,1]
 				v3 = @view h[:,:,1,1]
-
 
 				for v in [v1, v2, v3]
 					@test ndims(v) == 2
@@ -1797,9 +1911,17 @@ end
 
 			@testset "2D slices" begin
 				v = @view h[0:1,-half(1):half(1)]
+				@test axes(v) == (1:2, 1:2)
 				@test all(v .== h[0:1,-half(1):half(1)])
 				v .= 3
 				@test all(h[0:1,-half(1):half(1)] .== 3)
+
+				@test !(v isa HalfIntegerArrays.FastSubArray)
+				@test IndexStyle(v) == IndexCartesian()
+
+				val = rand()
+				v[1] = val
+				@test v[1] == v[1,1] == h[0,-half(1)] == val
 			end
 
 			@testset "1D slices" begin
@@ -1845,6 +1967,7 @@ end
 				@test v[1] == h[0,1/2,2]
 				v[] = 40
 				@test h[0,1/2,2] == 40
+				@test v[] == v[1] == v[1,1] == v[1,1,1] == 40
 			end
 
 			@testset "1D view" begin
@@ -1925,6 +2048,18 @@ end
 				for v in [v12, v23, v13]
 					@test ndims(v) == 2
 				end
+
+				@testset "FastSubArray" begin
+				    v = @view h[1,:,:]
+				    @test v isa HalfIntegerArrays.FastSubArray
+				    @test !(v isa HalfIntegerArrays.FastContiguousSubArray)
+				    for (ind,I) in enumerate(CartesianIndicesHalfInt(v))
+				    	@test v[I] == v[ind] == h[1,I]
+				    	val = rand()
+				    	v[ind] = val
+				    	@test v[I] == v[ind] == h[1,I] == val
+				    end
+				end
 			end
 
 			@testset "add dims" begin
@@ -1951,6 +2086,11 @@ end
 		@test v[1] == h[1/2,1/2]
 		v[] = 40
 		@test h[1/2,1/2] == 40
+		@test v[] == v[1] == v[1,1] == v[1,1,1] == 40
+
+		v[] = 34
+		@test h[1/2,1/2] == 34
+		@test v[] == v[1] == v[1,1] == v[1,1,1] == 34
 
 		v = @view h[:]
 		@test ndims(v) == 1
@@ -2003,6 +2143,11 @@ end
 			val = rand()
 			v .= val
 			@test all(h .== val)
+		end
+
+		v = @view h[-half(1):half(1),:]
+		for (ind,i1) in enumerate(axes(h,1)), i2 in axes(h,2)
+			@test v[ind,i2] == h[i1,i2]
 		end
 	end
 	@testset "CartesianIndicesHalfInt" begin
@@ -2067,12 +2212,12 @@ end
 		h = HalfIntArray(rand(2,2),1:2,3:4)
 		v = @view h'[:,:]
 		@test axes(v) == reverse(axes(h))
-		@test_broken all(v .== h')
+		@test all(v .== h')
 
 		h = SpinMatrix(rand(2,2));
 		v = @view h'[:,:];
 		@test axes(v) == reverse(axes(h));
-		@test_broken all(v .== h')
+		@test all(v .== h')
 	end
 end
 
@@ -2101,6 +2246,10 @@ end
 		@test h′ isa typeof(h)
 		@test axes(h′) == axes(h)
 
+		h′ = similar(h, eltype(h), (axes(h,1), 2:3))
+		@test h′ isa typeof(h)
+		@test axes(h′) == (axes(h,1), 2:3)
+
 		h′ = similar(h,eltype(h))
 		@test h′ isa typeof(h)
 		@test axes(h′) == axes(h)
@@ -2118,6 +2267,13 @@ end
 		h′ = similar(h,eltype(h),(1,2))
 		@test eltype(h′) == eltype(h)
 		@test axes(h′) == (Base.OneTo(1),Base.OneTo(2))
+
+		v = @view h[:,:]
+		v′ = similar(v, Float64, 2)
+		v′′ = similar(v, Float64, (2,))
+		@test eltype(v′) == eltype(v′′) == Float64
+		@test size(v′) == size(v′′) == (2,)
+		@test axes(v′) == axes(v′′) == (1:2,)
 
 		h′ = similar(h,eltype(h),())
 		@test eltype(h′) == eltype(h)
@@ -2308,6 +2464,18 @@ end
 				@test !isassigned(transpose(h), 3.5, 4)
 				@test isassigned(transpose(h), 5, 4)
 				@test isassigned(transpose(h), 5.0, 4)
+
+				v = HalfIntArray([1,2], 3:4)
+				vt = transpose(v)
+				@test vt[:,:] == vt
+				@test vt[:,3:4] == transpose([1,2])
+				@test vt[:] == parent(v)
+
+				v = HalfIntArray([1,2], -half(1):half(1))
+				vt = transpose(v)
+				@test vt[:,:] == vt
+				@test vt[:,-half(1):half(1)] == transpose([1,2])
+				@test vt[:] == [1,2]
 			end 
 			@testset "SpinMatrix" begin
 				@testset "CartesianIndices" begin
@@ -2388,6 +2556,18 @@ end
 				@test !isassigned(adjoint(h), 3.5, 4)
 				@test isassigned(adjoint(h), 5, 4)
 				@test isassigned(adjoint(h), 5.0, 4)
+
+				v = HalfIntArray([1,2], 3:4)
+				vt = adjoint(v)
+				@test vt[:,:] == vt
+				@test vt[:,3:4] == adjoint([1,2])
+				@test vt[:] == [1,2]
+
+				v = HalfIntArray([1,2], -half(1):half(1))
+				vt = adjoint(v)
+				@test vt[:,:] == vt
+				@test vt[:,-half(1):half(1)] == adjoint([1,2])
+				@test vt[:] == [1,2]
 			end 
 			@testset "SpinMatrix" begin
 				@testset "CartesianIndices" begin
@@ -2534,7 +2714,7 @@ end
 		@test HalfIntegerArrays._newindex((half(1),),(false,),(half(0),)) == (half(0),)
 	end
 	@testset "HalfIntArray" begin
-		@testset "A + A" begin
+		@testset "A .+ A" begin
 			@testset "2D" begin
 				h = HalfIntArray(rand(3,5),-1:1, -2:2)
 				h′ = h .+ h
@@ -2558,7 +2738,18 @@ end
 			end    
 		end
 
-		@testset "A + 1" begin
+		@testset "A .+ v" begin
+			intaxes = 0:2
+			halfintaxes = -half(1):half(1)
+
+			for ax1 in [intaxes, halfintaxes], ax2 in [intaxes, halfintaxes]
+			    h = HalfIntArray(rand(length(ax1),length(ax2)), ax1, ax2)
+			    v = HalfIntArray(rand(length(ax1)), ax1)
+			    @test parent(h .+ v) == parent(h) .+ parent(v)
+			end
+		end
+
+		@testset "A .+ 1" begin
 			@testset "2D" begin
 				h = HalfIntArray(rand(3,5),-1:1, -2:2)
 				h′ = h .+ 1
@@ -2581,7 +2772,7 @@ end
 				@test z′[] == z[] + 1
 			end
 		end
-		
+
 		@testset "inplace" begin
 			@testset "2D" begin
 				h = HalfIntArray(rand(3,5),-1:1, -2:2)
@@ -2610,7 +2801,7 @@ end
 		end
 	end
 	@testset "SpinMatrix" begin
-		@testset "A + A" begin
+		@testset "A .+ A" begin
 			@testset "spin 1" begin
 				h = SpinMatrix(rand(3,3),1)
 				h′ = h .+ h
@@ -2631,7 +2822,18 @@ end
 			end
 		end
 
-		@testset "A + 1" begin
+		@testset "A .+ v" begin
+			intaxes = -1:1
+			halfintaxes = -half(1):half(1)
+
+			for ax in [intaxes, halfintaxes]
+			    h = SpinMatrix(rand(length(ax),length(ax)))
+			    v = HalfIntArray(rand(length(ax)), ax)
+			    @test parent(h .+ v) == parent(h) .+ parent(v)
+			end
+		end
+
+		@testset "A .+ 1" begin
 			@testset "spin 1" begin
 				h = SpinMatrix(rand(3,3),1)
 				h′ = h .+ 1
@@ -2679,6 +2881,25 @@ end
 			end
 		end
 	end
+	@testset "HalfIntSubArray" begin
+	    h = HalfIntArray(ones(2,2), 3:4, 5:6)
+	    v2D = @view h[:,:]
+	    v′ = v2D .+ v2D
+	    @test parent(v′) == ones(2,2)*2
+	    v1D = @view h[:]
+	    v′ = v1D .+ v1D
+	    @test parent(v′) == ones(4)*2
+
+	    @test parent(v2D .+ zeros(axes(v2D))) == ones(2,2)
+
+	    v1D = @view h[:,5]
+	    @test parent(v1D .+ v1D) == parent(h[:,5]).*2
+	    v1D = @view h[3,:]
+	    @test parent(v1D .+ v1D) == parent(h[3,:]).*2
+	    
+	    v0D = @view h[3,5]
+	    @test v0D .+ v0D == h[3,5]*2
+	end
 end
 
 @testset "hashing" begin
@@ -2695,7 +2916,9 @@ end
 	@testset "HalfIntSubArray" begin
 	    A = HalfIntArray(zeros(2,2), 0:1, 0:1)
 	    AV = @view A[:,:] 
-		h = hash(:HalfIntSubArray, hash(parent(AV), hash(AV.offsets)))
+		h = hash(axes(AV), hash(AV.parent))
+		h = hash(AV.stride1, hash(AV.offset1, h))
+		h = hash(:HalfIntSubArray, h)
 		@test hash(AV) == h
 	end
 	@testset "CartesianIndexHalfInt" begin
@@ -2728,6 +2951,8 @@ end
 
 	    h = HalfIntArray(rand(2,2), 0:1, 0:1)
 	    @test keys(IndexLinear(), h) == eachindex(IndexLinear(),h)
+
+	    @test keys(axes(h,1)) == LinearIndicesHalfInt(axes(h,1))
 	end
 	@testset "pairs" begin
 	    h = HalfIntArray(rand(2,2), 0:1, 0:1)
@@ -2745,9 +2970,10 @@ end
 
 	function testshow(io, x)
 		show(io, x)
-		take!(io)
+		take!(io);
 		show(io, MIME"text/plain"(), x)
-		take!(io)
+		take!(io);
+		nothing
 	end
 
 	h = HalfIntArray{Float64,2}(undef,-1:1,-1:1)
@@ -2821,4 +3047,9 @@ end
 	Base.showarg(io, pairs(c), true)
 	Base.showarg(io, pairs(IndexCartesian(), v), true)
 	Base.showarg(io, pairs(IndexLinear(), v), true)
+
+	# test show for half-integer axes
+	h = SpinMatrix(ones(2,2))
+	v = @view h[:,:]
+	testshow(io, v)
 end

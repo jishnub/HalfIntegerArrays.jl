@@ -61,6 +61,8 @@ julia> SpinMatrix(zeros(ComplexF64,3,3), 1)
  0.0+0.0im  0.0+0.0im  0.0+0.0im
  0.0+0.0im  0.0+0.0im  0.0+0.0im
 ```
+
+See also: [`HalfIntArray`](@ref)
 """
 struct SpinMatrix{T,A<:AbstractMatrix} <: AbstractHalfIntegerWrapper{T,2}
     parent :: A
@@ -251,51 +253,52 @@ function to_parentindices(ax::NTuple{N,Any}, inds::Tuple{}) where {N}
     Base.fill_to_length((),1,Val(N))
 end
 
-function trimtoN(I::Tuple, ::Val{N}) where {N}
-    J,_ = Base.IteratorsMD.split(I,Val(N))
-    Base.fill_to_length(J,one(HalfInt),Val(N))
-end
-
 # Cartesian Indexing for nD arrays
-@propagate_inbounds function Base.getindex(A::HIAorSM, I::HalfInt...)
+@propagate_inbounds function Base.getindex(A::HIAorSM, I::Real...)
     @boundscheck checkbounds(A, I...)
     J = to_parentindices(axes(A), I)
     parent(A)[J...]
 end
 
-# 1D arrays always use Cartesian Indexing
 for DT in [:HalfInt,:Real,:Int,:Integer,:HalfInteger]
+    # 1D arrays always use Cartesian Indexing
     @eval @propagate_inbounds function Base.getindex(A::HalfIntArray{<:Any,1}, i::$DT)
         @boundscheck checkbounds(A, i)
         J = parentindex(axes(A,1), i)
         parent(A)[J]
     end
+    
+    # Indexing with a single Int/HalfInt forces linear indexing
+    # for arrays with >1 dimensions
+    @eval @propagate_inbounds function Base.getindex(A::HIAorSM, i::$DT)
+        ensureInt(i)
+        parent(A)[unsafeInt(i)]
+    end
 end
 
-# Indexing with a single Int/HalfInt forces linear indexing
-@propagate_inbounds Base.getindex(A::HIAorSM, i::Int)  = parent(A)[i]
-
-@propagate_inbounds function Base.setindex!(A::HIAorSM, val, I::HalfInt...)
+@propagate_inbounds function Base.setindex!(A::HIAorSM, val, I::Real...)
     @boundscheck checkbounds(A, I...)
     J = to_parentindices(axes(A), I)
     parent(A)[J...] = val
     A
 end
 
-# 1D arrays use Cartesian indexing
 for DT in [:HalfInt,:Real,:Int,:HalfInteger,:Integer]
+    # 1D arrays use Cartesian indexing
     @eval @propagate_inbounds function Base.setindex!(A::HalfIntArray{<:Any,1}, val, i::$DT)
         @boundscheck checkbounds(A, i)
         J = parentindex(Base.axes1(A), i)
         parent(A)[J] = val
         A
     end
-end
 
-# Linear indexing
-@propagate_inbounds function Base.setindex!(A::HIAorSM, val, i::Int)
-    parent(A)[i] = val
-    A
+    # Indexing with a single Int/HalfInt forces linear indexing
+    # for arrays with >1 dimensions
+    @eval @propagate_inbounds function Base.setindex!(A::HIAorSM, val, i::$DT)
+        ensureInt(i)
+        parent(A)[unsafeInt(i)] = val
+        A
+    end
 end
 
 ### Some mutating functions defined only for HalfIntVector ###

@@ -241,12 +241,13 @@ CartesianIndicesHalfInt(A::AbstractArray) = CartesianIndicesHalfInt(axes(A))
 
 Base.IndexStyle(::Type{<:CartesianIndicesHalfIntAny{N,R}}) where {N,R} = IndexCartesian()
 
-# Optimized definition, disabling bounds check might result in incorrect results 
-# if used with fewer than N indices
-@propagate_inbounds function Base.getindex(iter::CartesianIndicesHalfInt{N}, I::HalfInt...) where {N}
+_maybehalfInt(t::NTuple{N,Int}) where {N} = t
+_maybehalfInt(t::NTuple{N,Real}) where {N} = map(HalfInt, t)
+
+@propagate_inbounds function Base.getindex(iter::CartesianIndicesHalfInt{N}, I::Real...) where {N}
     @boundscheck checkbounds(iter, I...)
     J = trimtoN(I, Val(N))
-    CartesianIndexHalfInt(J)
+    CartesianIndexHalfInt(_maybehalfInt(J))
 end
 
 @propagate_inbounds function Base.getindex(iter::CartesianIndicesHalfIntParent, I::Int...)
@@ -330,8 +331,15 @@ function Base.hash(c::CartesianIndicesHalfInt, h::UInt)
 end
 
 @inline Base.to_indices(A, I::Tuple{Vararg{Union{HalfInteger, CartesianIndexHalfInt}}}) = to_indices(A, axes(A), I)
-@inline Base.to_indices(A, inds, I::Tuple{CartesianIndexHalfInt, Vararg{Any}}) =
+@inline Base.to_indices(A::AbstractHalfIntegerArrayOrWrapper, inds::Tuple{AbstractRange{Int},Vararg{Any}}, I::Tuple{CartesianIndexHalfInt, Vararg{Any}}) =
     to_indices(A, inds, (Tuple(first(I))..., Base.tail(I)...))
+@inline Base.to_indices(A::AbstractHalfIntegerArrayOrWrapper, inds, I::Tuple{CartesianIndexHalfInt, Vararg{Any}}) =
+    to_indices(A, inds, (Tuple(first(I))..., Base.tail(I)...))
+
+# In general assume that arrays have integer indices
+@inline Base.to_indices(A::AbstractArray, inds::Tuple{AbstractRange{Int},Vararg{Any}}, I::Tuple{CartesianIndexHalfInt, Vararg{Any}}) =
+    to_indices(A, inds, (map(Int, Tuple(first(I)))..., Base.tail(I)...))
+
 # But for arrays of CartesianIndex, we just skip the appropriate number of inds
 @inline function Base.to_indices(A, inds, I::Tuple{AbstractArray{CartesianIndexHalfInt{N}}, Vararg{Any}}) where N
     _, indstail = Base.IteratorsMD.split(inds, Val(N))
@@ -488,13 +496,14 @@ for f in [:length, :size]
 end
 
 # Linear indexing
-function Base.getindex(iter::LinearIndicesHalfInt, i::Int)
+function Base.getindex(iter::LinearIndicesHalfInt, i::Real)
     @boundscheck checkbounds(iter, i)
-    i
+    ensureInt(i)
+    unsafeInt(i)
 end
 
 # Cartesian indexing
-@propagate_inbounds function Base.getindex(iter::LinearIndicesHalfInt, I::HalfInt...)
+@propagate_inbounds function Base.getindex(iter::LinearIndicesHalfInt, I::Real...)
     @boundscheck checkbounds(iter, I...)
     J = to_parentindices(axes(iter),I)
     iter.lininds[J...]
@@ -509,14 +518,21 @@ end
     iter.lininds[I...]
 end
 
-# 1D arrays use Cartesian indexing
-function Base.getindex(iter::LinearIndicesHalfInt{1}, i::HalfInt, I::HalfInt...)
-    @boundscheck checkbounds(iter, i, I...)
+@inline function Base.getindex(iter::LinearIndicesHalfInt{1}, i::Real)
+    @boundscheck checkbounds(iter, i)
     i
 end
-function Base.getindex(iter::LinearIndicesHalfIntParent{1}, i::Int, I::Int...)
+@inline function Base.getindex(iter::LinearIndicesHalfInt{1}, i::Real, I::Real...)
     @boundscheck checkbounds(iter, i, I...)
-    i + iter.offsets[1]
+    @inbounds iter[i]
+end
+@inline function Base.getindex(iter::LinearIndicesHalfIntParent{1}, i::Int)
+    @boundscheck checkbounds(iter, i)
+    @inbounds i + iter.offsets[1]
+end
+@inline function Base.getindex(iter::LinearIndicesHalfIntParent{1}, i::Int, I::Int...)
+    @boundscheck checkbounds(iter, i, I...)
+    @inbounds iter[i]
 end
 
 @propagate_inbounds function Base.getindex(iter::LinearIndicesHalfInt, i::AbstractRange{<:HalfIntegerOrInteger})

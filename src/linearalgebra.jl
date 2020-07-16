@@ -8,7 +8,7 @@ for AT in [:AdjOrTransAbsHalfIntMatrix, :AdjOrTransAbsHalfIntVector]
 		    isassigned(parent(A), reverse(K)...)
 		end
 	end
-	for IT in [:Int, :HalfInt]
+	for IT in [:Int, :Real]
 		@eval @propagate_inbounds function Base.getindex(A::$AT, i::$IT, j::$IT)
 			@boundscheck checkbounds(A, i, j)
 			wrapperop(A)(A.parent[j,i])
@@ -21,6 +21,12 @@ for AT in [:AdjOrTransAbsHalfIntMatrix, :AdjOrTransAbsHalfIntVector]
 		end
 	end
 end
+
+# AbstractArray interface, additional definitions to retain wrapper over vectors where appropriate
+for DT in [:Int, :Real]
+	@eval @propagate_inbounds Base.getindex(v::AdjOrTransAbsHalfIntVector, ::Colon, is::AbstractArray{$DT}) = wrapperop(v)(v.parent[is])
+end
+@propagate_inbounds Base.getindex(v::AdjOrTransAbsHalfIntVector, ::Colon, ::Colon) = wrapperop(v)(copy(v.parent))
 
 @propagate_inbounds function Base.getindex(a::AdjOrTransAbsHalfIntVecOrMat, i::Int)
 	@boundscheck checkbounds(a, i)

@@ -153,8 +153,11 @@ end
 end
 
 # Optimizations
-function Base.checkindex(::Type{Bool}, inds::IdOffsetRange, i::HalfInt)
-    Base.checkindex(Bool, parent(inds), i - offset(inds)) && isinteger(offset(inds) + i)
+function Base.checkindex(::Type{Bool}, r::IdOffsetRange, i::Real)
+    Base.checkindex(Bool, r.parent, i - r.offset) && isinteger(i - r.offset)
+end
+function Base.checkindex(::Type{Bool}, r::Base.Slice{<:IdOffsetRange}, i::Real)
+    Base.checkindex(Bool, r.indices, i - r.offset)
 end
 
 function Base.isassigned(r::IdOffsetRange, I::Integer...)
@@ -163,7 +166,14 @@ function Base.isassigned(r::IdOffsetRange, I::Integer...)
     isassigned(parent(r), J...)
 end
 function Base.isassigned(r::IdOffsetRange, I::Real...)
-    (checkbounds(Bool, r, I...) && indicescompatible((r,), I)) || return false
+    (checkbounds(Bool, r, I...) && indicescompatible((r.offset,), I)) || return false
     J = to_parentindices(axes(r),I)
     isassigned(parent(r), J...)
+end
+
+function Base.hash(r::IdOffsetRange, h::UInt)
+    h = hash(parent(r), h)
+    h = hash(r.offset, h)
+    h = hash(:IdOffsetRange, h)
+    return h
 end
