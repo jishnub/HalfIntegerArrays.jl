@@ -241,13 +241,15 @@ CartesianIndicesHalfInt(A::AbstractArray) = CartesianIndicesHalfInt(axes(A))
 
 Base.IndexStyle(::Type{<:CartesianIndicesHalfIntAny{N,R}}) where {N,R} = IndexCartesian()
 
-_maybehalfInt(t::NTuple{N,Int}) where {N} = t
-_maybehalfInt(t::NTuple{N,Real}) where {N} = map(HalfInt, t)
+_convertIntOrHalfInt(t::NTuple{N,Int}) where {N} = t
+_convertIntOrHalfInt(t::NTuple{N,Real}) where {N} = map(HalfInt, t)
+_convertIntOrHalfInt(i::Int) = i
+_convertIntOrHalfInt(i::Real) = HalfInt(i)
 
 @propagate_inbounds function Base.getindex(iter::CartesianIndicesHalfInt{N}, I::Real...) where {N}
     @boundscheck checkbounds(iter, I...)
     J = trimtoN(I, Val(N))
-    CartesianIndexHalfInt(_maybehalfInt(J))
+    CartesianIndexHalfInt(_convertIntOrHalfInt(J))
 end
 
 @propagate_inbounds function Base.getindex(iter::CartesianIndicesHalfIntParent, I::Int...)
@@ -256,17 +258,18 @@ end
 end
 
 # 1D arrays use Cartesian Indexing
-for DT in [:Int, :HalfInt]
+for DT in [:Int, :Real]
     @eval @propagate_inbounds function Base.getindex(iter::CartesianIndicesHalfInt{1}, i::$DT)
         @boundscheck checkbounds(iter, i)
-        CartesianIndexHalfInt(i)
+        CartesianIndexHalfInt(_convertIntOrHalfInt(i))
     end
 end
 
 # Linear Indexing
-@propagate_inbounds function Base.getindex(A::CartesianIndicesHalfInt, i::Int)
+@propagate_inbounds function Base.getindex(A::CartesianIndicesHalfInt, i::Real)
     @boundscheck checkbounds(A, i)
-    CartesianIndexHalfInt(A.cartinds[i], A.offsets)
+    @boundscheck ensureInt(i)
+    CartesianIndexHalfInt(A.cartinds[unsafeInt(i)], A.offsets)
 end
 
 Base.IteratorSize(::Type{<:CartesianIndicesHalfInt{N}}) where {N} = Base.HasShape{N}()

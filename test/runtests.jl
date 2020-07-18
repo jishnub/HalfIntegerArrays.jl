@@ -698,6 +698,12 @@ Base.IndexStyle(::Type{<:abc{<:Any,<:Any,C}}) where {C} = C()
 			@test h[c] == h
 			@test_throws Exception CartesianIndices(h)
 
+			@testset "linear indexing" begin
+				for (ind,I) in enumerate(c)
+					@test c[ind] == c[HalfInt(ind)] == c[I] == c[Tuple(I)...] == c[I,1]
+				end
+			end
+
 			for I in c
 				@test h[I] == h.parent[I.parent]
 			end
@@ -721,14 +727,14 @@ Base.IndexStyle(::Type{<:abc{<:Any,<:Any,C}}) where {C} = C()
 			@test h[cinds] == h
 			@test parent(h)[cindsHI.cartinds] == parent(h)
 			for (i,CI) in enumerate(cindsHI)
-				@test cindsHI[i] == cindsHI[CI]
+				@test cindsHI[i] == cindsHI[HalfInt(i)] == cindsHI[float(i)] == cindsHI[CI] == cindsHI[CI,1]
 			end
 			@test h[CartesianIndexHalfInt(()),1,1] == h[1,1]
 			@test h[CartesianIndicesHalfInt(()),1,1][] == h[1,1]
 			@test Base.checkbounds_indices(Bool, axes(h), (CartesianIndicesHalfInt(()),1,1))
 
 			for I in cindsHI
-				@test h[I] == h.parent[I.parent]
+				@test h[I] == h.parent[I.parent] == h[I,1]
 			end
 
 			@test collect(cindsHI) == parent(cindsHI)

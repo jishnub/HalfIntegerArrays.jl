@@ -260,20 +260,20 @@ end
     parent(A)[J...]
 end
 
-for DT in [:HalfInt,:Real,:Int,:Integer,:HalfInteger]
+for DT in [:Real, :Int]
     # 1D arrays always use Cartesian Indexing
     @eval @propagate_inbounds function Base.getindex(A::HalfIntArray{<:Any,1}, i::$DT)
         @boundscheck checkbounds(A, i)
         J = parentindex(axes(A,1), i)
         parent(A)[J]
     end
-    
-    # Indexing with a single Int/HalfInt forces linear indexing
-    # for arrays with >1 dimensions
-    @eval @propagate_inbounds function Base.getindex(A::HIAorSM, i::$DT)
-        ensureInt(i)
-        parent(A)[unsafeInt(i)]
-    end
+end
+
+# Indexing with a single index forces linear indexing
+# for arrays with >1 dimensions
+@propagate_inbounds function Base.getindex(A::HIAorSM, i::Real)
+    ensureInt(i)
+    parent(A)[unsafeInt(i)]
 end
 
 @propagate_inbounds function Base.setindex!(A::HIAorSM, val, I::Real...)
@@ -283,7 +283,7 @@ end
     A
 end
 
-for DT in [:HalfInt,:Real,:Int,:HalfInteger,:Integer]
+for DT in [:Real, :Int]
     # 1D arrays use Cartesian indexing
     @eval @propagate_inbounds function Base.setindex!(A::HalfIntArray{<:Any,1}, val, i::$DT)
         @boundscheck checkbounds(A, i)
@@ -292,13 +292,13 @@ for DT in [:HalfInt,:Real,:Int,:HalfInteger,:Integer]
         A
     end
 
-    # Indexing with a single Int/HalfInt forces linear indexing
-    # for arrays with >1 dimensions
-    @eval @propagate_inbounds function Base.setindex!(A::HIAorSM, val, i::$DT)
-        ensureInt(i)
-        parent(A)[unsafeInt(i)] = val
-        A
-    end
+end
+# Indexing with a single Int/HalfInt forces linear indexing
+# for arrays with >1 dimensions
+@propagate_inbounds function Base.setindex!(A::HIAorSM, val, i::Real)
+    ensureInt(i)
+    parent(A)[unsafeInt(i)] = val
+    A
 end
 
 ### Some mutating functions defined only for HalfIntVector ###
