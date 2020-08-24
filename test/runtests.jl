@@ -1715,10 +1715,13 @@ end
 	@test Base.unsafe_indices(r) == (r,)
 	@test Base.reduced_index(r) == IdOffsetRange(3:3, HalfInt(0))
 
-	h = HalfIntArray{Float64}(undef,-1:1)
-	@test Base.compute_offset1(h,1,size(h),axes(h),(-1,)) == 0
-	@test Base.compute_offset1(h,1,size(h),axes(h),(0,)) == 1
-	@test Base.compute_offset1(h,1,size(h),axes(h),(1,)) == 2
+	# OffsetArrays #133
+	a12 = HalfIntArray{Float64}(undef, 3:8, 3:4);
+	r = HalfIntegerArrays.IdOffsetRange(Base.OneTo(3), 5)
+	I = (r,4)
+	dims = Base.find_extended_dims(1, I...)
+	inds = Base.find_extended_inds(I...)
+	@test Base.compute_offset1(a12, 1, dims, inds, I) == 4
 
 	r2 = IdentityUnitRange(IdOffsetRange(1:3, HalfInt(2)))
 	@test Base.reduced_index(r2) == IdOffsetRange(3:3, HalfInt(0))
@@ -1891,6 +1894,19 @@ end
 				@test axes(v) == (Base.OneTo(length(h)),)
 				v .= 2
 				@test all(h .== 2)
+
+				@testset "IdOffsetRange" begin
+					# OffsetArrays #133
+				    a12 = HalfIntArray{Float64}(undef, 3:8, 3:4)
+				    r = HalfIntegerArrays.IdOffsetRange(Base.OneTo(3), 5)
+				    a12[r, 4] .= 3
+				    @test all(a12[r, 4] .== 3)
+				    @test all(a12[UnitRange(r), 4] .== 3)
+
+				    a12[UnitRange(r), 4] .= 4
+				    @test all(a12[r, 4] .== 4)
+				    @test all(a12[UnitRange(r), 4] .== 4)
+				end
 			end
 
 			@testset "entire array" begin

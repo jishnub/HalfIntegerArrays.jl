@@ -111,7 +111,7 @@ Base.eltype(::IdOffsetRange{T,<:AbstractUnitRange{Q}}) where {T,Q} = promote_typ
 @inline Base.unsafe_indices(r::Base.Slice{<:IdOffsetRange}) = (r.indices,)
 @inline Base.length(r::IdOffsetRange) = length(parent(r))
 @inline Base.compute_offset1(parent, stride1::Integer, dims::Tuple{Int}, inds::Tuple{IdOffsetRange}, I::Tuple) =
-    Base.compute_linindex(parent, I) - stride1*first(axes(parent, dims[1]))
+    Base.compute_linindex(parent, I) - stride1*first(inds[1])
 Base.reduced_index(i::IdOffsetRange) = typeof(i)(first(parent(i)):first(parent(i)),offset(i))
 Base.reduced_index(i::IdentityUnitRange{<:IdOffsetRange}) = Base.reduced_index(i.indices)
 
