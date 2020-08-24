@@ -198,12 +198,13 @@ Base.similar(A::AbstractHalfIntegerArrayOrWrapper, ::Type{T}, dims::Dims) where 
 
 # Need to import OffsetAxis to get around the type-piracy in OffsetArrays
 # See https://github.com/JuliaArrays/OffsetArrays.jl/issues/87#issuecomment-581391453
-import OffsetArrays: OffsetAxis
+import OffsetArrays: OffsetAxis, OffsetAxisKnownLength
 # This lets us avoid ambiguities with Base
 const ReshapedAxis = Union{Integer,Base.OneTo}
 const ReshapedAxisOneTo = Union{ReshapedAxis, OneTo}
 # Axis types internal to this package
 const HalfIntAxis = Union{IdOffsetRange,OneTo}
+const HalfIntOffsetAxisKnownLength = Union{OffsetAxisKnownLength, HalfIntAxis}
 const HalfIntOffsetAxis = Union{OffsetAxis, HalfIntAxis}
 
 # Similar with non-offset axes returns an Array
@@ -215,14 +216,14 @@ for ax in [:ReshapedAxis, :OneTo, :ReshapedAxisOneTo]
 end
 
 # Similar with offset axes returns a HalfIntArray
-for ax in [:HalfIntOffsetAxis, :OffsetAxis]
+for ax in [:HalfIntOffsetAxisKnownLength, :OffsetAxisKnownLength]
     @eval function Base.similar(A::AbstractHalfIntegerArrayOrWrapper, ::Type{T}, inds::Tuple{$ax,Vararg{$ax}}) where T
         B = similar(parent(A), T, map(indexlength, inds))
         return HalfIntArray(B, map(offset, axes(B), inds))
     end
 end
 
-for DT in [:OneTo, :ReshapedAxis, :HalfIntOffsetAxis, :OffsetAxis]
+for DT in [:OneTo, :ReshapedAxis, :HalfIntOffsetAxisKnownLength, :OffsetAxisKnownLength]
 	@eval function Base.similar(A::AbstractHalfIntegerArrayOrWrapper, inds::Tuple{$DT,Vararg{$DT}})
 	    similar(A, eltype(A), inds)
 	end
@@ -235,7 +236,7 @@ for DT in [:AbstractArray, :AbstractHalfIntegerArrayOrWrapper]
 	end
 end
 
-function Base.similar(::Type{T}, inds::Tuple{HalfIntAxis,Vararg{HalfIntOffsetAxis}}) where {T<:AbstractArray}
+function Base.similar(::Type{T}, inds::Tuple{HalfIntAxis,Vararg{HalfIntOffsetAxisKnownLength}}) where {T<:AbstractArray}
     P = T(undef, map(indexlength, inds))
     HalfIntArray(P, map(offset, axes(P), inds))
 end
